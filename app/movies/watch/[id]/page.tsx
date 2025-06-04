@@ -1,0 +1,280 @@
+"use client"
+
+import { useParams, useRouter } from "next/navigation"
+import { useState, useRef, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, Star } from "lucide-react"
+import { moviesData } from "@/lib/movies-data"
+import { MovieCard } from "@/components/movie-card"
+import { useAuth } from "@/components/auth-provider"
+import type { WatchProgress } from "@/lib/types"
+
+export default function WatchMoviePage() {
+  const params = useParams()
+  const router = useRouter()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const { user } = useAuth()
+
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [showControls, setShowControls] = useState(true)
+  const [initialTimeSet, setInitialTimeSet] = useState(false)
+
+  const movie = moviesData.find((m) => m.id === params.id)
+  const relatedMovies = moviesData
+    .filter((m) => m.id !== params.id && m.genre.some((genre) => movie?.genre.includes(genre)))
+    .slice(0, 4)
+
+  // Load saved progress
+  useEffect(() => {
+    if (movie && user && videoRef.current && !initialTimeSet) {
+      const watchProgressData = localStorage.getItem(`watchProgress-${user.id}`)
+      if (watchProgressData) {
+        const watchProgress: WatchProgress[] = JSON.parse(watchProgressData)
+        const movieProgress = watchProgress.find((p) => p.movieId === movie.id)
+
+        if (movieProgress && videoRef.current) {
+          // Calculate time based on percentage
+          const timeToSet = (movieProgress.progress / 100) * videoRef.current.duration
+          if (!isNaN(timeToSet) && isFinite(timeToSet)) {
+            videoRef.current.currentTime = timeToSet
+            setInitialTimeSet(true)
+          }
+        }
+      }
+    }
+  }, [movie, user, duration, initialTimeSet])
+
+  // Save progress periodically
+  useEffect(() => {
+    if (!movie || !user || !duration) return
+
+    const saveInterval = setInterval(() => {
+      if (videoRef.current && currentTime > 0) {
+        const progressPercent = Math.floor((currentTime / duration) * 100)
+
+        // Save to localStorage
+        const watchProgressData = localStorage.getItem(`watchProgress-${user.id}`)
+        const watchProgress: WatchProgress[] = watchProgressData ? JSON.parse(watchProgressData) : []
+
+        // Update or add progress
+        const existingIndex = watchProgress.findIndex((p) => p.movieId === movie.id)
+        const newProgress = {
+          movieId: movie.id,
+          progress: progressPercent,
+          lastWatched: new Date(),
+        }
+
+        if (existingIndex >= 0) {
+          watchProgress[existingIndex] = newProgress
+        } else {
+          watchProgress.push(newProgress)
+        }
+
+        localStorage.setItem(`watchProgress-${user.id}`, JSON.stringify(watchProgress))
+      }
+    }, 5000) // Save every 5 seconds
+
+    return () => clearInterval(saveInterval)
+  }, [movie, user, currentTime, duration])
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout
+    if (showControls) {
+      timeout = setTimeout(() => setShowControls(false), 3000)
+    }
+    return () => clearTimeout(timeout)
+  }, [showControls])
+
+  if (!movie) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Movie not found</h1>
+          <Button onClick={() => router.back()}>Go Back</Button>
+        </div>
+      </div>
+    )
+  }
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause()
+      } else {
+        videoRef.current.play()
+      }
+      setIsPlaying(!isPlaying)
+    }
+  }
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted
+      setIsMuted(!isMuted)
+    }
+  }
+
+  const toggleFullscreen = () => {
+    if (videoRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen()
+      } else {
+        videoRef.current.requestFullscreen()
+      }
+    }
+  }
+
+  const formatTime = (time: number) => {
+    const hours = Math.floor(time / 3600)
+    const minutes = Math.floor((time % 3600) / 60)
+    const seconds = Math.floor(time % 60)
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+    }
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+  }
+
+  return (
+    <div className="min-h-screen bg-black">
+      {/* Video Player */}
+      <div
+        className="relative w-full h-screen"
+        onMouseMove={() => setShowControls(true)}
+        onMouseLeave={() => setShowControls(false)}
+      >
+        <video
+          ref={videoRef}
+          src={movie.videoUrl}
+          className="w-full h-full object-cover"
+          onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+          onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+        />
+
+        {/* Video Controls Overlay */}
+        <div
+          className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}
+        >
+          {/* Top Controls */}
+          <div className="absolute top-0 left-0 right-0 p-6 flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={() => router.back()}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <h1 className="text-white text-xl font-semibold">{movie.title}</h1>
+            <div></div>
+          </div>
+
+          {/* Center Play Button */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={togglePlay}
+              className="w-20 h-20 rounded-full bg-black/50 hover:bg-black/70"
+            >
+              {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-1" />}
+            </Button>
+          </div>
+
+          {/* Bottom Controls */}
+          <div className="absolute bottom-0 left-0 right-0 p-6">
+            {/* Progress Bar */}
+            <div
+              className="w-full bg-white/20 rounded-full h-1 mb-4 cursor-pointer"
+              onClick={(e) => {
+                if (videoRef.current) {
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  const pos = (e.clientX - rect.left) / rect.width
+                  videoRef.current.currentTime = pos * duration
+                }
+              }}
+            >
+              <div
+                className="bg-red-600 h-1 rounded-full transition-all duration-300"
+                style={{ width: `${(currentTime / duration) * 100}%` }}
+              />
+            </div>
+
+            {/* Control Buttons */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" onClick={togglePlay}>
+                  {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
+                </Button>
+                <Button variant="ghost" size="sm">
+                  <SkipBack className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="sm">
+                  <SkipForward className="h-5 w-5" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={toggleMute}>
+                  {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                </Button>
+                <span className="text-white text-sm">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+              </div>
+
+              <Button variant="ghost" size="sm" onClick={toggleFullscreen}>
+                <Maximize className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Movie Details & Related */}
+      <div className="container mx-auto px-4 py-8">
+        {/* Movie Details */}
+        <Card className="mb-8">
+          <CardContent className="p-6">
+            <h2 className="text-2xl font-bold mb-4">{movie.title}</h2>
+
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-1">
+                <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                <span className="font-medium">{movie.rating}</span>
+              </div>
+              <span>{movie.releaseYear}</span>
+              <span>
+                {Math.floor(movie.duration / 60)}h {movie.duration % 60}m
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-4">
+              {movie.genre.map((genre) => (
+                <Badge key={genre} variant="secondary">
+                  {genre}
+                </Badge>
+              ))}
+            </div>
+
+            <p className="text-muted-foreground leading-relaxed">{movie.description}</p>
+          </CardContent>
+        </Card>
+
+        {/* More Like This */}
+        {relatedMovies.length > 0 && (
+          <div className="mb-8">
+            <h3 className="text-2xl font-bold mb-6">More Like This</h3>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              {relatedMovies.map((relatedMovie) => (
+                <div key={relatedMovie.id} className="flex-shrink-0">
+                  <MovieCard movie={relatedMovie} size="small" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

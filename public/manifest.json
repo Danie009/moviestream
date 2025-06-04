@@ -1,0 +1,23 @@
+{
+  "name": "MovieStream",
+  "short_name": "MovieStream",
+  "description": "A modern movie streaming platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1E1A2C",
+  "theme_color": "#E83FB8",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

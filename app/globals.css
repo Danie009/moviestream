@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 260 30% 98%;
+    --foreground: 260 25% 15%;
+
+    --card: 260 30% 98%;
+    --card-foreground: 260 25% 15%;
+
+    --popover: 260 30% 98%;
+    --popover-foreground: 260 25% 15%;
+
+    --primary: 290 80% 58%; /* movie-pink-500 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 260 50% 52%; /* movie-purple-600 */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 260 10% 90%;
+    --muted-foreground: 260 10% 40%;
+
+    --accent: 260 50% 95%;
+    --accent-foreground: 260 50% 30%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 260 20% 85%;
+    --input: 260 20% 85%;
+    --ring: 290 80% 58%; /* movie-pink-500 */
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 260 25% 10%; /* movie-dark-900 */
+    --foreground: 260 10% 95%;
+
+    --card: 260 25% 12%; /* movie-dark-800 */
+    --card-foreground: 260 10% 95%;
+
+    --popover: 260 25% 12%;
+    --popover-foreground: 260 10% 95%;
+
+    --primary: 290 80% 58%; /* movie-pink-500 */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 260 50% 52%; /* movie-purple-600 */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 260 25% 20%;
+    --muted-foreground: 260 10% 70%;
+
+    --accent: 260 25% 25%;
+    --accent-foreground: 260 10% 95%;
+
+    --destructive: 0 74% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 260 25% 25%;
+    --input: 260 25% 25%;
+    --ring: 290 80% 58%; /* movie-pink-500 */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
