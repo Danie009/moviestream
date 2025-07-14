@@ -1,5 +1,13 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { TMDB_CONFIG, type TMDBResponse, type TMDBMovie, GENRE_MAP, getImageUrl, getBackdropUrl } from "@/lib/tmdb-api"
+import {
+  TMDB_CONFIG,
+  type TMDBResponse,
+  type TMDBMovie,
+  GENRE_MAP,
+  getImageUrl,
+  getBackdropUrl,
+  createHeaders,
+} from "@/lib/tmdb-api"
 import type { Movie } from "@/lib/types"
 
 export async function GET(request: NextRequest) {
@@ -10,15 +18,17 @@ export async function GET(request: NextRequest) {
   const query = searchParams.get("query")
 
   try {
-    let url = `${TMDB_CONFIG.BASE_URL}/movie/${category}?api_key=${TMDB_CONFIG.API_KEY}&page=${page}`
+    let url = `${TMDB_CONFIG.BASE_URL}/movie/${category}?page=${page}`
 
     if (query) {
-      url = `${TMDB_CONFIG.BASE_URL}/search/movie?api_key=${TMDB_CONFIG.API_KEY}&query=${encodeURIComponent(query)}&page=${page}`
+      url = `${TMDB_CONFIG.BASE_URL}/search/movie?query=${encodeURIComponent(query)}&page=${page}`
     } else if (genre) {
-      url = `${TMDB_CONFIG.BASE_URL}/discover/movie?api_key=${TMDB_CONFIG.API_KEY}&with_genres=${genre}&page=${page}`
+      url = `${TMDB_CONFIG.BASE_URL}/discover/movie?with_genres=${genre}&page=${page}`
     }
 
-    const response = await fetch(url)
+    const response = await fetch(url, {
+      headers: createHeaders(),
+    })
 
     if (!response.ok) {
       throw new Error(`TMDB API error: ${response.status}`)

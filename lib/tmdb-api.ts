@@ -2,7 +2,10 @@
 export const TMDB_CONFIG = {
   BASE_URL: "https://api.themoviedb.org/3",
   IMAGE_BASE_URL: "https://image.tmdb.org/t/p",
-  API_KEY: process.env.NEXT_PUBLIC_TMDB_API_KEY || "",
+  API_KEY: process.env.NEXT_PUBLIC_TMDB_API_KEY || "f73055bc3f2176a5f7bc4908897bef83",
+  ACCESS_TOKEN:
+    process.env.TMDB_ACCESS_TOKEN ||
+    "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNzMwNTViYzNmMjE3NmE1ZjdiYzQ5MDg4OTdiZWY4MyIsIm5iZiI6MTc1MjUwMzIyNC42NTQsInN1YiI6IjY4NzUxM2I4ODQ0MTJjM2EwNDVhZTcyMyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.pffK7bP-c-Dn_2ykAiAZIvGo2XrqWk54B5DUOSICLt8",
 }
 
 export interface TMDBMovie {
@@ -67,6 +70,14 @@ export const getImageUrl = (path: string | null, size = "w500"): string => {
 export const getBackdropUrl = (path: string | null, size = "w1280"): string => {
   if (!path) return "/placeholder.svg?height=720&width=1280"
   return `${TMDB_CONFIG.IMAGE_BASE_URL}/${size}${path}`
+}
+
+// Create fetch headers with authentication
+export const createHeaders = () => {
+  return {
+    Authorization: `Bearer ${TMDB_CONFIG.ACCESS_TOKEN}`,
+    "Content-Type": "application/json",
+  }
 }
 
 // Genre mapping

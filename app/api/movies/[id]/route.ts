@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { TMDB_CONFIG, type TMDBMovieDetails, getImageUrl, getBackdropUrl } from "@/lib/tmdb-api"
+import { TMDB_CONFIG, type TMDBMovieDetails, getImageUrl, getBackdropUrl, createHeaders } from "@/lib/tmdb-api"
 import type { Movie } from "@/lib/types"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -8,8 +8,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   try {
     // Fetch movie details with videos
     const [movieResponse, videosResponse] = await Promise.all([
-      fetch(`${TMDB_CONFIG.BASE_URL}/movie/${tmdbId}?api_key=${TMDB_CONFIG.API_KEY}`),
-      fetch(`${TMDB_CONFIG.BASE_URL}/movie/${tmdbId}/videos?api_key=${TMDB_CONFIG.API_KEY}`),
+      fetch(`${TMDB_CONFIG.BASE_URL}/movie/${tmdbId}`, {
+        headers: createHeaders(),
+      }),
+      fetch(`${TMDB_CONFIG.BASE_URL}/movie/${tmdbId}/videos`, {
+        headers: createHeaders(),
+      }),
     ])
 
     if (!movieResponse.ok) {

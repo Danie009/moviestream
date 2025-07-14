@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server"
-import { TMDB_CONFIG, type TMDBGenre } from "@/lib/tmdb-api"
+import { TMDB_CONFIG, type TMDBGenre, createHeaders } from "@/lib/tmdb-api"
 
 export async function GET() {
   try {
-    const response = await fetch(`${TMDB_CONFIG.BASE_URL}/genre/movie/list?api_key=${TMDB_CONFIG.API_KEY}`)
+    const response = await fetch(`${TMDB_CONFIG.BASE_URL}/genre/movie/list`, {
+      headers: createHeaders(),
+    })
 
     if (!response.ok) {
       throw new Error(`TMDB API error: ${response.status}`)
