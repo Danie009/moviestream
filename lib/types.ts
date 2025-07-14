@@ -5,8 +5,10 @@ export interface User {
   role: "admin" | "moderator" | "user"
 }
 
+// Updated Movie interface to work with TMDB data
 export interface Movie {
   id: string
+  tmdbId: number
   title: string
   description: string
   poster: string
@@ -24,10 +26,27 @@ export interface Movie {
     date: Date
     reason?: string
   }
+  // Additional TMDB fields
+  popularity: number
+  voteCount: number
+  originalLanguage: string
 }
 
 export interface WatchProgress {
   movieId: string
   progress: number
   lastWatched: Date
+}
+
+// Streaming status for movies (since TMDB doesn't have this)
+export interface StreamingStatus {
+  tmdbId: number
+  isStreaming: boolean
+  featured: boolean
+  dateAdded: Date
+  scheduledRemoval?: {
+    date: Date
+    reason?: string
+  }
+  videoUrl?: string
 }

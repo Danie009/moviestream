@@ -1,125 +1,194 @@
-import type { Movie } from "./types"
-import { moviesData } from "./movies-data"
+import type { Movie, StreamingStatus } from "./types"
 
 class MovieService {
-  private storageKey = "movies-master-data"
+  private streamingStatusKey = "streaming-status"
+  private baseUrl = "/api/movies"
 
-  // Get all movies with current streaming status and scheduled removals
-  getMovies(): Movie[] {
-    const savedData = localStorage.getItem(this.storageKey)
-    if (savedData) {
-      const movies: Movie[] = JSON.parse(savedData)
-      // Clean up expired scheduled removals
-      return this.cleanupExpiredRemovals(movies)
-    }
-
-    // Initialize with default data if no saved data exists
-    const initializedMovies = moviesData.map((movie) => ({ ...movie }))
-    this.saveMovies(initializedMovies)
-    return initializedMovies
+  // Get streaming status from localStorage
+  private getStreamingStatuses(): StreamingStatus[] {
+    if (typeof window === "undefined") return []
+    const saved = localStorage.getItem(this.streamingStatusKey)
+    return saved ? JSON.parse(saved) : []
   }
 
-  // Get only streaming movies (for /movies page)
-  getStreamingMovies(): Movie[] {
-    return this.getMovies().filter((movie) => movie.isStreaming)
+  // Save streaming status to localStorage
+  private saveStreamingStatuses(statuses: StreamingStatus[]): void {
+    if (typeof window === "undefined") return
+    localStorage.setItem(this.streamingStatusKey, JSON.stringify(statuses))
+    window.dispatchEvent(new CustomEvent("moviesUpdated", { detail: statuses }))
   }
 
-  // Get all movies (for dashboard - both streaming and non-streaming)
-  getAllMovies(): Movie[] {
-    return this.getMovies()
-  }
+  // Fetch movies from TMDB API
+  async fetchMovies(
+    options: {
+      page?: number
+      category?: string
+      genre?: string
+      query?: string
+    } = {},
+  ): Promise<{
+    movies: Movie[]
+    page: number
+    totalPages: number
+    totalResults: number
+  }> {
+    const { page = 1, category = "popular", genre, query } = options
 
-  // Save movies to localStorage
-  saveMovies(movies: Movie[]): void {
-    localStorage.setItem(this.storageKey, JSON.stringify(movies))
-    // Trigger a custom event to notify other components
-    window.dispatchEvent(new CustomEvent("moviesUpdated", { detail: movies }))
-  }
-
-  // Toggle streaming status immediately
-  toggleStreaming(movieId: string): Movie[] {
-    const movies = this.getMovies()
-    const updatedMovies = movies.map((movie) => {
-      if (movie.id === movieId) {
-        return {
-          ...movie,
-          isStreaming: !movie.isStreaming,
-          // Clear scheduled removal if toggling back to streaming
-          scheduledRemoval: movie.isStreaming ? movie.scheduledRemoval : undefined,
-        }
-      }
-      return movie
+    const params = new URLSearchParams({
+      page: page.toString(),
+      category,
     })
 
-    this.saveMovies(updatedMovies)
-    return updatedMovies
+    if (genre) params.append("genre", genre)
+    if (query) params.append("query", query)
+
+    const response = await fetch(`${this.baseUrl}?${params}`)
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch movies")
+    }
+
+    const data = await response.json()
+
+    // Merge with streaming status
+    const streamingStatuses = this.getStreamingStatuses()
+    const moviesWithStatus = data.movies.map((movie: Movie) => {
+      const status = streamingStatuses.find((s) => s.tmdbId === movie.tmdbId)
+      return {
+        ...movie,
+        isStreaming: status?.isStreaming ?? true,
+        featured: status?.featured ?? movie.featured,
+        dateAdded: status?.dateAdded ? new Date(status.dateAdded) : movie.dateAdded,
+        scheduledRemoval: status?.scheduledRemoval,
+        videoUrl: status?.videoUrl || movie.videoUrl,
+      }
+    })
+
+    return {
+      ...data,
+      movies: moviesWithStatus,
+    }
   }
 
-  // Schedule removal in 3 days
-  scheduleRemoval(movieId: string, reason?: string): Movie[] {
-    const movies = this.getMovies()
+  // Fetch single movie details
+  async fetchMovieDetails(id: string): Promise<Movie | null> {
+    try {
+      const response = await fetch(`${this.baseUrl}/${id}`)
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch movie details")
+      }
+
+      const movie = await response.json()
+
+      // Merge with streaming status
+      const streamingStatuses = this.getStreamingStatuses()
+      const status = streamingStatuses.find((s) => s.tmdbId === movie.tmdbId)
+
+      return {
+        ...movie,
+        isStreaming: status?.isStreaming ?? true,
+        featured: status?.featured ?? movie.featured,
+        dateAdded: status?.dateAdded ? new Date(status.dateAdded) : movie.dateAdded,
+        scheduledRemoval: status?.scheduledRemoval,
+        videoUrl: status?.videoUrl || movie.videoUrl,
+      }
+    } catch (error) {
+      console.error("Error fetching movie details:", error)
+      return null
+    }
+  }
+
+  // Get only streaming movies
+  async getStreamingMovies(
+    options: {
+      page?: number
+      category?: string
+      genre?: string
+      query?: string
+    } = {},
+  ): Promise<Movie[]> {
+    const { movies } = await this.fetchMovies(options)
+    return movies.filter((movie) => movie.isStreaming)
+  }
+
+  // Get all movies (for dashboard)
+  async getAllMovies(
+    options: {
+      page?: number
+      category?: string
+      genre?: string
+      query?: string
+    } = {},
+  ): Promise<Movie[]> {
+    const { movies } = await this.fetchMovies(options)
+    return movies
+  }
+
+  // Toggle streaming status
+  toggleStreaming(tmdbId: number): void {
+    const statuses = this.getStreamingStatuses()
+    const existingIndex = statuses.findIndex((s) => s.tmdbId === tmdbId)
+
+    if (existingIndex >= 0) {
+      statuses[existingIndex].isStreaming = !statuses[existingIndex].isStreaming
+      if (statuses[existingIndex].isStreaming) {
+        // Clear scheduled removal when adding back to streaming
+        delete statuses[existingIndex].scheduledRemoval
+      }
+    } else {
+      // Create new status entry
+      statuses.push({
+        tmdbId,
+        isStreaming: false, // Toggle to false since it was true by default
+        featured: false,
+        dateAdded: new Date(),
+      })
+    }
+
+    this.saveStreamingStatuses(statuses)
+  }
+
+  // Schedule removal
+  scheduleRemoval(tmdbId: number, reason?: string): void {
+    const statuses = this.getStreamingStatuses()
+    const existingIndex = statuses.findIndex((s) => s.tmdbId === tmdbId)
     const removalDate = new Date()
     removalDate.setDate(removalDate.getDate() + 3)
 
-    const updatedMovies = movies.map((movie) => {
-      if (movie.id === movieId) {
-        return {
-          ...movie,
-          scheduledRemoval: {
-            date: removalDate,
-            reason: reason || "Content license expiring",
-          },
-        }
+    if (existingIndex >= 0) {
+      statuses[existingIndex].scheduledRemoval = {
+        date: removalDate,
+        reason: reason || "Content license expiring",
       }
-      return movie
-    })
+    } else {
+      statuses.push({
+        tmdbId,
+        isStreaming: true,
+        featured: false,
+        dateAdded: new Date(),
+        scheduledRemoval: {
+          date: removalDate,
+          reason: reason || "Content license expiring",
+        },
+      })
+    }
 
-    this.saveMovies(updatedMovies)
-    return updatedMovies
+    this.saveStreamingStatuses(statuses)
   }
 
   // Cancel scheduled removal
-  cancelScheduledRemoval(movieId: string): Movie[] {
-    const movies = this.getMovies()
-    const updatedMovies = movies.map((movie) => {
-      if (movie.id === movieId) {
-        return {
-          ...movie,
-          scheduledRemoval: undefined,
-        }
-      }
-      return movie
-    })
+  cancelScheduledRemoval(tmdbId: number): void {
+    const statuses = this.getStreamingStatuses()
+    const existingIndex = statuses.findIndex((s) => s.tmdbId === tmdbId)
 
-    this.saveMovies(updatedMovies)
-    return updatedMovies
-  }
-
-  // Clean up expired scheduled removals
-  private cleanupExpiredRemovals(movies: Movie[]): Movie[] {
-    const now = new Date()
-    let hasChanges = false
-
-    const cleanedMovies = movies.map((movie) => {
-      if (movie.scheduledRemoval && new Date(movie.scheduledRemoval.date) <= now) {
-        hasChanges = true
-        return {
-          ...movie,
-          isStreaming: false,
-          scheduledRemoval: undefined,
-        }
-      }
-      return movie
-    })
-
-    if (hasChanges) {
-      this.saveMovies(cleanedMovies)
+    if (existingIndex >= 0) {
+      delete statuses[existingIndex].scheduledRemoval
+      this.saveStreamingStatuses(statuses)
     }
-
-    return cleanedMovies
   }
 
-  // Get days remaining for scheduled removal
+  // Get days until removal
   getDaysUntilRemoval(movie: Movie): number | null {
     if (!movie.scheduledRemoval) return null
 
@@ -131,39 +200,24 @@ class MovieService {
     return Math.max(0, diffDays)
   }
 
-  // Add a new movie
-  addMovie(movie: Omit<Movie, "id">): Movie[] {
-    const movies = this.getMovies()
-    const newMovie: Movie = {
-      ...movie,
-      id: `movie-${Date.now()}`, // Generate a unique ID
+  // Set custom video URL for a movie
+  setVideoUrl(tmdbId: number, videoUrl: string): void {
+    const statuses = this.getStreamingStatuses()
+    const existingIndex = statuses.findIndex((s) => s.tmdbId === tmdbId)
+
+    if (existingIndex >= 0) {
+      statuses[existingIndex].videoUrl = videoUrl
+    } else {
+      statuses.push({
+        tmdbId,
+        isStreaming: true,
+        featured: false,
+        dateAdded: new Date(),
+        videoUrl,
+      })
     }
 
-    const updatedMovies = [...movies, newMovie]
-    this.saveMovies(updatedMovies)
-    return updatedMovies
-  }
-
-  // Update an existing movie
-  updateMovie(movieId: string, updates: Partial<Movie>): Movie[] {
-    const movies = this.getMovies()
-    const updatedMovies = movies.map((movie) => {
-      if (movie.id === movieId) {
-        return { ...movie, ...updates }
-      }
-      return movie
-    })
-
-    this.saveMovies(updatedMovies)
-    return updatedMovies
-  }
-
-  // Delete a movie
-  deleteMovie(movieId: string): Movie[] {
-    const movies = this.getMovies()
-    const updatedMovies = movies.filter((movie) => movie.id !== movieId)
-    this.saveMovies(updatedMovies)
-    return updatedMovies
+    this.saveStreamingStatuses(statuses)
   }
 }
 
