@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { MovieCard } from "@/components/movie-card"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Search } from "lucide-react"
 import { movieService } from "@/lib/movie-service"
 import type { Movie } from "@/lib/types"
 
-export default function BrowsePage() {
+function BrowseContent() {
   const searchParams = useSearchParams()
   const initialGenre = searchParams.get("genre")
   const initialSort = searchParams.get("sort") as "title" | "year" | "rating" | null
@@ -218,5 +218,34 @@ export default function BrowsePage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function BrowsePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <div className="h-8 bg-gray-200 animate-pulse rounded w-48 mb-6" />
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
+              <div className="h-10 bg-gray-200 animate-pulse rounded flex-1" />
+              <div className="flex gap-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 w-16 bg-gray-200 animate-pulse rounded" />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+              <div key={i} className="w-28 h-40 sm:w-64 sm:h-96 bg-gray-200 animate-pulse rounded" />
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <BrowseContent />
+    </Suspense>
   )
 }
