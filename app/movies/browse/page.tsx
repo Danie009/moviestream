@@ -18,12 +18,44 @@ export default function BrowsePage() {
   const [selectedGenre, setSelectedGenre] = useState<string | null>(initialGenre)
   const [sortBy, setSortBy] = useState<"title" | "year" | "rating">(initialSort || "title")
   const [streamingMovies, setStreamingMovies] = useState<Movie[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Filter movies to only show streaming ones
-  const streamingMoviesFiltered = streamingMovies
+  // Load streaming movies
+  useEffect(() => {
+    const loadStreamingMovies = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const movies = await movieService.getStreamingMovies({
+          category: "popular",
+          query: searchTerm || undefined,
+        })
+        setStreamingMovies(movies)
+      } catch (err) {
+        console.error("Error loading movies:", err)
+        setError("Failed to load movies. Please try again later.")
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  // Update the filteredMovies to use streamingMovies instead of moviesData:
-  const filteredMovies = streamingMoviesFiltered
+    loadStreamingMovies()
+
+    // Listen for movie updates from dashboard
+    const handleMoviesUpdate = () => {
+      loadStreamingMovies()
+    }
+
+    window.addEventListener("moviesUpdated", handleMoviesUpdate)
+
+    return () => {
+      window.removeEventListener("moviesUpdated", handleMoviesUpdate)
+    }
+  }, [searchTerm])
+
+  // Filter and sort movies
+  const filteredMovies = streamingMovies
     .filter((movie) => {
       const matchesSearch =
         movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -42,8 +74,8 @@ export default function BrowsePage() {
       }
     })
 
-  // Update allGenres to use streamingMovies:
-  const allGenres = Array.from(new Set(streamingMoviesFiltered.flatMap((movie) => movie.genre)))
+  // Get all unique genres from streaming movies
+  const allGenres = Array.from(new Set(streamingMovies.flatMap((movie) => movie.genre)))
 
   // Set initial filters from URL params
   useEffect(() => {
@@ -55,28 +87,53 @@ export default function BrowsePage() {
     }
   }, [initialGenre, initialSort])
 
-  useEffect(() => {
-    const loadStreamingMovies = () => {
-      const movies = movieService.getStreamingMovies()
-      setStreamingMovies(movies)
-    }
+  // Loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 animate-pulse rounded w-48 mb-6" />
 
-    // Listen for movie updates from dashboard
-    const handleMoviesUpdate = () => {
-      loadStreamingMovies()
-    }
+          {/* Search and filters skeleton */}
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="h-10 bg-gray-200 animate-pulse rounded flex-1" />
+            <div className="flex gap-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-10 w-16 bg-gray-200 animate-pulse rounded" />
+              ))}
+            </div>
+          </div>
 
-    window.addEventListener("moviesUpdated", handleMoviesUpdate)
+          {/* Genre filters skeleton */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-8 w-20 bg-gray-200 animate-pulse rounded" />
+            ))}
+          </div>
+        </div>
 
-    return () => {
-      window.removeEventListener("moviesUpdated", handleMoviesUpdate)
-    }
-  }, [])
+        {/* Movies grid skeleton */}
+        <div className="grid grid-cols-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
+            <div key={i} className="w-28 h-40 sm:w-64 sm:h-96 bg-gray-200 animate-pulse rounded" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
-  useEffect(() => {
-    const movies = movieService.getStreamingMovies()
-    setStreamingMovies(movies)
-  }, [])
+  // Error state
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Error Loading Movies</h1>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -146,7 +203,7 @@ export default function BrowsePage() {
         ))}
       </div>
 
-      {filteredMovies.length === 0 && (
+      {filteredMovies.length === 0 && !loading && (
         <div className="text-center py-12">
           <p className="text-muted-foreground text-lg">No movies found matching your criteria.</p>
           <Button
