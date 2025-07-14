@@ -1,5 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { TMDB_CONFIG, type TMDBMovieDetails, getImageUrl, getBackdropUrl, createHeaders } from "@/lib/tmdb-api"
+import {
+  TMDB_CONFIG,
+  type TMDBMovieDetails,
+  getImageUrl,
+  getBackdropUrl,
+  createHeaders,
+  shouldFilterMovie,
+} from "@/lib/tmdb-api"
 import type { Movie } from "@/lib/types"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
@@ -21,6 +28,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const movieData: TMDBMovieDetails = await movieResponse.json()
+
+    // Check if this movie should be filtered out
+    if (shouldFilterMovie(movieData)) {
+      return NextResponse.json({ error: "Movie not available" }, { status: 404 })
+    }
+
     const videosData = videosResponse.ok ? await videosResponse.json() : { results: [] }
 
     // Find trailer video

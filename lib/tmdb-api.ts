@@ -23,6 +23,10 @@ export interface TMDBMovie {
   adult: boolean
   video: boolean
   runtime?: number
+  production_countries?: Array<{
+    iso_3166_1: string
+    name: string
+  }>
 }
 
 export interface TMDBGenre {
@@ -101,4 +105,74 @@ export const GENRE_MAP: Record<number, string> = {
   53: "Thriller",
   10752: "War",
   37: "Western",
+}
+
+// Content filtering functions
+export const isAdultContent = (movie: TMDBMovie): boolean => {
+  // Check if movie is marked as adult
+  if (movie.adult) return true
+
+  // Check for adult/erotic keywords in title and overview
+  const adultKeywords = [
+    "sex",
+    "erotic",
+    "porn",
+    "xxx",
+    "adult",
+    "nude",
+    "naked",
+    "strip",
+    "seduction",
+    "lust",
+    "desire",
+    "passion",
+    "intimate",
+    "sensual",
+    "sexual",
+    "bedroom",
+    "escort",
+    "prostitute",
+    "brothel",
+    "red light",
+    "playboy",
+    "playgirl",
+    "fifty shades",
+    "nymphomaniac",
+    "blue is the warmest",
+    "love actually",
+    "showgirls",
+    "basic instinct",
+    "fatal attraction",
+  ]
+
+  const title = movie.title.toLowerCase()
+  const overview = (movie.overview || "").toLowerCase()
+
+  return adultKeywords.some((keyword) => title.includes(keyword) || overview.includes(keyword))
+}
+
+export const isFromPhilippines = (movie: TMDBMovie): boolean => {
+  // Check if movie is from Philippines
+  if (movie.production_countries) {
+    return movie.production_countries.some(
+      (country) => country.iso_3166_1 === "PH" || country.name.toLowerCase().includes("philippines"),
+    )
+  }
+
+  // Check for Filipino language codes
+  const filipinoLanguages = ["tl", "fil", "ceb", "ilo", "hil", "war", "pam", "pag", "bcl", "mag"]
+  if (filipinoLanguages.includes(movie.original_language)) {
+    return true
+  }
+
+  // Check for Filipino keywords in title
+  const filipinoKeywords = ["tagalog", "filipino", "pinoy", "manila", "cebu", "davao"]
+  const title = movie.title.toLowerCase()
+  const overview = (movie.overview || "").toLowerCase()
+
+  return filipinoKeywords.some((keyword) => title.includes(keyword) || overview.includes(keyword))
+}
+
+export const shouldFilterMovie = (movie: TMDBMovie): boolean => {
+  return isAdultContent(movie) || isFromPhilippines(movie)
 }

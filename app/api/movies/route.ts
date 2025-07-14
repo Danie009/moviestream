@@ -7,6 +7,7 @@ import {
   getImageUrl,
   getBackdropUrl,
   createHeaders,
+  shouldFilterMovie,
 } from "@/lib/tmdb-api"
 import type { Movie } from "@/lib/types"
 
@@ -22,12 +23,12 @@ export async function GET(request: NextRequest) {
 
     // Fetch multiple pages to get more movies
     for (let page = 1; page <= maxPages; page++) {
-      let url = `${TMDB_CONFIG.BASE_URL}/movie/${category}?page=${page}`
+      let url = `${TMDB_CONFIG.BASE_URL}/movie/${category}?page=${page}&include_adult=false`
 
       if (query) {
-        url = `${TMDB_CONFIG.BASE_URL}/search/movie?query=${encodeURIComponent(query)}&page=${page}`
+        url = `${TMDB_CONFIG.BASE_URL}/search/movie?query=${encodeURIComponent(query)}&page=${page}&include_adult=false`
       } else if (genre) {
-        url = `${TMDB_CONFIG.BASE_URL}/discover/movie?with_genres=${genre}&page=${page}`
+        url = `${TMDB_CONFIG.BASE_URL}/discover/movie?with_genres=${genre}&page=${page}&include_adult=false`
       }
 
       const response = await fetch(url, {
@@ -40,7 +41,11 @@ export async function GET(request: NextRequest) {
       }
 
       const data: TMDBResponse<TMDBMovie> = await response.json()
-      allMovies = [...allMovies, ...data.results]
+
+      // Filter out adult content and Philippines movies
+      const filteredResults = data.results.filter((movie) => !shouldFilterMovie(movie))
+
+      allMovies = [...allMovies, ...filteredResults]
 
       // Stop if we've reached the last page
       if (page >= data.total_pages) {
@@ -51,8 +56,14 @@ export async function GET(request: NextRequest) {
     // Remove duplicates based on TMDB ID
     const uniqueMovies = allMovies.filter((movie, index, self) => index === self.findIndex((m) => m.id === movie.id))
 
+    // Additional filtering for quality content
+    const qualityMovies = uniqueMovies.filter((movie) => {
+      // Filter out movies with very low ratings or vote counts
+      return movie.vote_average > 3.0 && movie.vote_count > 10
+    })
+
     // Transform TMDB data to our Movie format
-    const movies: Movie[] = uniqueMovies.map((tmdbMovie) => ({
+    const movies: Movie[] = qualityMovies.map((tmdbMovie) => ({
       id: `tmdb-${tmdbMovie.id}`,
       tmdbId: tmdbMovie.id,
       title: tmdbMovie.title,
@@ -74,7 +85,19 @@ export async function GET(request: NextRequest) {
                 ? "Spanish"
                 : tmdbMovie.original_language === "fr"
                   ? "French"
-                  : "Other",
+                  : tmdbMovie.original_language === "de"
+                    ? "German"
+                    : tmdbMovie.original_language === "it"
+                      ? "Italian"
+                      : tmdbMovie.original_language === "pt"
+                        ? "Portuguese"
+                        : tmdbMovie.original_language === "ru"
+                          ? "Russian"
+                          : tmdbMovie.original_language === "hi"
+                            ? "Hindi"
+                            : tmdbMovie.original_language === "zh"
+                              ? "Chinese"
+                              : "Other",
       rating: Math.round(tmdbMovie.vote_average * 10) / 10,
       featured: tmdbMovie.popularity > 100,
       isStreaming: true,
