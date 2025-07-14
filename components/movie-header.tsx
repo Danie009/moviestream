@@ -1,5 +1,8 @@
 "use client"
 
+import type React from "react"
+
+import { useState } from "react" // Import useState
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/components/auth-provider"
@@ -15,9 +18,24 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Search, LogOut, User, Settings, Shield } from "lucide-react"
 import { Logo } from "@/components/logo"
 import Link from "next/link"
+import { useRouter } from "next/navigation" // Import useRouter
 
 export function MovieHeader() {
   const { user, logout } = useAuth()
+  const router = useRouter()
+  const [searchTerm, setSearchTerm] = useState("") // State for search input
+
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      router.push(`/movies/browse?query=${encodeURIComponent(searchTerm.trim())}`)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSearch()
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -40,8 +58,17 @@ export function MovieHeader() {
 
         <div className="flex items-center gap-4">
           <div className="relative hidden sm:block">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search movies..." className="pl-8 w-64" />
+            <Search
+              className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer"
+              onClick={handleSearch} // Add onClick to search icon
+            />
+            <Input
+              placeholder="Search movies..."
+              className="pl-8 w-64"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={handleKeyDown} // Add onKeyDown handler
+            />
           </div>
 
           <DropdownMenu>

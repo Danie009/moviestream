@@ -13,15 +13,16 @@ function BrowseContent() {
   const searchParams = useSearchParams()
   const initialGenre = searchParams.get("genre")
   const initialSort = searchParams.get("sort") as "title" | "year" | "rating" | null
+  const initialQuery = searchParams.get("query") // Get initial query from URL
 
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState(initialQuery || "") // Initialize with URL query
   const [selectedGenre, setSelectedGenre] = useState<string | null>(initialGenre)
   const [sortBy, setSortBy] = useState<"title" | "year" | "rating">(initialSort || "title")
   const [streamingMovies, setStreamingMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Load streaming movies
+  // Load streaming movies based on search term
   useEffect(() => {
     const loadStreamingMovies = async () => {
       try {
@@ -29,7 +30,7 @@ function BrowseContent() {
         setError(null)
         const movies = await movieService.getStreamingMovies({
           category: "popular",
-          query: searchTerm || undefined,
+          query: searchTerm || undefined, // Pass searchTerm to service
         })
         setStreamingMovies(movies)
       } catch (err) {
@@ -52,7 +53,7 @@ function BrowseContent() {
     return () => {
       window.removeEventListener("moviesUpdated", handleMoviesUpdate)
     }
-  }, [searchTerm])
+  }, [searchTerm]) // Re-run when searchTerm changes
 
   // Filter and sort movies
   const filteredMovies = streamingMovies
@@ -77,15 +78,19 @@ function BrowseContent() {
   // Get all unique genres from streaming movies
   const allGenres = Array.from(new Set(streamingMovies.flatMap((movie) => movie.genre)))
 
-  // Set initial filters from URL params
+  // Update local state when URL search params change (e.g., from header search)
   useEffect(() => {
-    if (initialGenre) {
+    const currentQuery = searchParams.get("query")
+    if (currentQuery !== searchTerm) {
+      setSearchTerm(currentQuery || "")
+    }
+    if (initialGenre && initialGenre !== selectedGenre) {
       setSelectedGenre(initialGenre)
     }
-    if (initialSort) {
+    if (initialSort && initialSort !== sortBy) {
       setSortBy(initialSort)
     }
-  }, [initialGenre, initialSort])
+  }, [searchParams, initialGenre, initialSort, searchTerm, selectedGenre, sortBy])
 
   // Loading state
   if (loading) {
