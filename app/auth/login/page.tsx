@@ -48,7 +48,7 @@ export default function LoginPage() {
             </Button>
           </div>
           <div className="flex justify-center mb-4">
-           {/*  <Logo size="lg" href="/" /> */}
+            <Logo size="lg" href="/" />
           </div>
           <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
           <CardDescription className="text-center">Sign in to your account to continue watching</CardDescription>

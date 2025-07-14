@@ -62,7 +62,7 @@ export default function SignupPage() {
             </Button>
           </div>
           <div className="flex justify-center mb-4">
-           {/*  <Logo size="lg" href="/" /> */}
+            <Logo size="lg" href="/" />
           </div>
           <CardTitle className="text-2xl font-bold text-center">Join MovieStream</CardTitle>
           <CardDescription className="text-center">
