@@ -2,10 +2,7 @@
 export const TMDB_CONFIG = {
   BASE_URL: "https://api.themoviedb.org/3",
   IMAGE_BASE_URL: "https://image.tmdb.org/t/p",
-  API_KEY: process.env.NEXT_PUBLIC_TMDB_API_KEY || "f73055bc3f2176a5f7bc4908897bef83",
-  ACCESS_TOKEN:
-    process.env.TMDB_ACCESS_TOKEN ||
-    "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJmNzMwNTViYzNmMjE3NmE1ZjdiYzQ5MDg4OTdiZWY4MyIsIm5iZiI6MTc1MjUwMzIyNC42NTQsInN1YiI6IjY4NzUxM2I4ODQ0MTJjM2EwNDVhZTcyMyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.pffK7bP-c-Dn_2ykAiAZIvGo2XrqWk54B5DUOSICLt8",
+  // Removed API_KEY from here as it's not needed on the client and was causing exposure
 }
 
 export interface TMDBMovie {
@@ -78,8 +75,16 @@ export const getBackdropUrl = (path: string | null, size = "w1280"): string => {
 
 // Create fetch headers with authentication
 export const createHeaders = () => {
+  // Directly use the server-side environment variable
+  const accessToken = process.env.TMDB_ACCESS_TOKEN
+  if (!accessToken) {
+    // In a production environment, ensure this variable is set.
+    // For development, you might have a fallback or throw a more specific error.
+    console.error("TMDB_ACCESS_TOKEN is not defined. Ensure it's set in your environment variables.")
+    throw new Error("Authentication token missing for TMDB API.")
+  }
   return {
-    Authorization: `Bearer ${TMDB_CONFIG.ACCESS_TOKEN}`,
+    Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
   }
 }
