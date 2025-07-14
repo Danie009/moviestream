@@ -21,21 +21,14 @@ class MovieService {
   // Fetch movies from TMDB API
   async fetchMovies(
     options: {
-      page?: number
       category?: string
       genre?: string
       query?: string
     } = {},
-  ): Promise<{
-    movies: Movie[]
-    page: number
-    totalPages: number
-    totalResults: number
-  }> {
-    const { page = 1, category = "popular", genre, query } = options
+  ): Promise<Movie[]> {
+    const { category = "popular", genre, query } = options
 
     const params = new URLSearchParams({
-      page: page.toString(),
       category,
     })
 
@@ -64,10 +57,7 @@ class MovieService {
       }
     })
 
-    return {
-      ...data,
-      movies: moviesWithStatus,
-    }
+    return moviesWithStatus
   }
 
   // Fetch single movie details
@@ -102,27 +92,24 @@ class MovieService {
   // Get only streaming movies
   async getStreamingMovies(
     options: {
-      page?: number
       category?: string
       genre?: string
       query?: string
     } = {},
   ): Promise<Movie[]> {
-    const { movies } = await this.fetchMovies(options)
+    const movies = await this.fetchMovies(options)
     return movies.filter((movie) => movie.isStreaming)
   }
 
   // Get all movies (for dashboard)
   async getAllMovies(
     options: {
-      page?: number
       category?: string
       genre?: string
       query?: string
     } = {},
   ): Promise<Movie[]> {
-    const { movies } = await this.fetchMovies(options)
-    return movies
+    return await this.fetchMovies(options)
   }
 
   // Toggle streaming status
@@ -133,14 +120,12 @@ class MovieService {
     if (existingIndex >= 0) {
       statuses[existingIndex].isStreaming = !statuses[existingIndex].isStreaming
       if (statuses[existingIndex].isStreaming) {
-        // Clear scheduled removal when adding back to streaming
         delete statuses[existingIndex].scheduledRemoval
       }
     } else {
-      // Create new status entry
       statuses.push({
         tmdbId,
-        isStreaming: false, // Toggle to false since it was true by default
+        isStreaming: false,
         featured: false,
         dateAdded: new Date(),
       })

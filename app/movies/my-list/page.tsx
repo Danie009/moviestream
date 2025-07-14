@@ -1,15 +1,48 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MovieCard } from "@/components/movie-card"
 import { Button } from "@/components/ui/button"
-import { moviesData } from "@/lib/movies-data"
+import { movieService } from "@/lib/movie-service"
 import { Heart, Plus } from "lucide-react"
 import Link from "next/link"
+import type { Movie } from "@/lib/types"
 
 export default function MyListPage() {
-  // Mock user's saved movies - in real app this would come from database
-  const [savedMovies] = useState(moviesData.slice(0, 3))
+  const [savedMovies, setSavedMovies] = useState<Movie[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadSavedMovies = async () => {
+      try {
+        // Get a few popular movies as placeholder for saved movies
+        const movies = await movieService.getStreamingMovies({ category: "popular" })
+        setSavedMovies(movies.slice(0, 6))
+      } catch (error) {
+        console.error("Error loading saved movies:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadSavedMovies()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <div className="h-8 bg-gray-200 animate-pulse rounded w-48 mb-2" />
+          <div className="h-4 bg-gray-200 animate-pulse rounded w-64" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="w-64 h-96 bg-gray-200 animate-pulse rounded" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

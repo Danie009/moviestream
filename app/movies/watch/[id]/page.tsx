@@ -5,11 +5,11 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, Star } from "lucide-react"
-import { moviesData } from "@/lib/movies-data"
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, SkipBack, SkipForward, Star, Download } from "lucide-react"
+import { movieService } from "@/lib/movie-service"
 import { MovieCard } from "@/components/movie-card"
 import { useAuth } from "@/components/auth-provider"
-import type { WatchProgress } from "@/lib/types"
+import type { WatchProgress, Movie } from "@/lib/types"
 
 export default function WatchMoviePage() {
   const params = useParams()
@@ -17,6 +17,9 @@ export default function WatchMoviePage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const { user } = useAuth()
 
+  const [movie, setMovie] = useState<Movie | null>(null)
+  const [relatedMovies, setRelatedMovies] = useState<Movie[]>([])
+  const [loading, setLoading] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -24,10 +27,33 @@ export default function WatchMoviePage() {
   const [showControls, setShowControls] = useState(true)
   const [initialTimeSet, setInitialTimeSet] = useState(false)
 
-  const movie = moviesData.find((m) => m.id === params.id)
-  const relatedMovies = moviesData
-    .filter((m) => m.id !== params.id && m.genre.some((genre) => movie?.genre.includes(genre)))
-    .slice(0, 4)
+  // Load movie and related movies
+  useEffect(() => {
+    const loadMovie = async () => {
+      try {
+        setLoading(true)
+        const movieData = await movieService.fetchMovieDetails(params.id as string)
+        if (movieData) {
+          setMovie(movieData)
+
+          // Get related movies based on genre
+          const allMovies = await movieService.getStreamingMovies({ category: "popular" })
+          const related = allMovies
+            .filter((m) => m.id !== movieData.id && m.genre.some((genre) => movieData.genre.includes(genre)))
+            .slice(0, 4)
+          setRelatedMovies(related)
+        }
+      } catch (error) {
+        console.error("Error loading movie:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (params.id) {
+      loadMovie()
+    }
+  }, [params.id])
 
   // Load saved progress
   useEffect(() => {
@@ -38,7 +64,6 @@ export default function WatchMoviePage() {
         const movieProgress = watchProgress.find((p) => p.movieId === movie.id)
 
         if (movieProgress && videoRef.current) {
-          // Calculate time based on percentage
           const timeToSet = (movieProgress.progress / 100) * videoRef.current.duration
           if (!isNaN(timeToSet) && isFinite(timeToSet)) {
             videoRef.current.currentTime = timeToSet
@@ -57,11 +82,9 @@ export default function WatchMoviePage() {
       if (videoRef.current && currentTime > 0) {
         const progressPercent = Math.floor((currentTime / duration) * 100)
 
-        // Save to localStorage
         const watchProgressData = localStorage.getItem(`watchProgress-${user.id}`)
         const watchProgress: WatchProgress[] = watchProgressData ? JSON.parse(watchProgressData) : []
 
-        // Update or add progress
         const existingIndex = watchProgress.findIndex((p) => p.movieId === movie.id)
         const newProgress = {
           movieId: movie.id,
@@ -77,7 +100,7 @@ export default function WatchMoviePage() {
 
         localStorage.setItem(`watchProgress-${user.id}`, JSON.stringify(watchProgress))
       }
-    }, 5000) // Save every 5 seconds
+    }, 5000)
 
     return () => clearInterval(saveInterval)
   }, [movie, user, currentTime, duration])
@@ -89,6 +112,17 @@ export default function WatchMoviePage() {
     }
     return () => clearTimeout(timeout)
   }, [showControls])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p>Loading movie...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!movie) {
     return (
@@ -127,6 +161,11 @@ export default function WatchMoviePage() {
         videoRef.current.requestFullscreen()
       }
     }
+  }
+
+  const handleDownload = () => {
+    // In a real app, this would trigger a download
+    alert("Download feature would be implemented here")
   }
 
   const formatTime = (time: number) => {
@@ -169,7 +208,10 @@ export default function WatchMoviePage() {
               Back
             </Button>
             <h1 className="text-white text-xl font-semibold">{movie.title}</h1>
-            <div></div>
+            <Button variant="ghost" size="sm" onClick={handleDownload}>
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
           </div>
 
           {/* Center Play Button */}
