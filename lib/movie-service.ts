@@ -1,12 +1,5 @@
 import type { Movie, StreamingStatus } from "./types"
 
-interface FetchMoviesResponse {
-  movies: Movie[]
-  page: number
-  totalPages: number
-  totalResults: number
-}
-
 class MovieService {
   private streamingStatusKey = "streaming-status"
   private baseUrl = "/api/movies"
@@ -31,16 +24,12 @@ class MovieService {
       category?: string
       genre?: string
       query?: string
-      page?: number // Added page parameter
-      pageSize?: number // Added pageSize parameter
     } = {},
-  ): Promise<FetchMoviesResponse> {
-    const { category = "popular", genre, query, page = 1, pageSize = 20 } = options
+  ): Promise<Movie[]> {
+    const { category = "popular", genre, query } = options
 
     const params = new URLSearchParams({
       category,
-      page: page.toString(),
-      pageSize: pageSize.toString(),
     })
 
     if (genre) params.append("genre", genre)
@@ -52,7 +41,7 @@ class MovieService {
       throw new Error("Failed to fetch movies")
     }
 
-    const data: FetchMoviesResponse = await response.json()
+    const data: { movies: Movie[]; totalResults: number } = await response.json()
 
     // Merge with streaming status
     const streamingStatuses = this.getStreamingStatuses()
@@ -68,12 +57,7 @@ class MovieService {
       }
     })
 
-    return {
-      movies: moviesWithStatus,
-      page: data.page,
-      totalPages: data.totalPages,
-      totalResults: data.totalResults,
-    }
+    return moviesWithStatus
   }
 
   // Fetch single movie details
@@ -111,11 +95,9 @@ class MovieService {
       category?: string
       genre?: string
       query?: string
-      page?: number
-      pageSize?: number
     } = {},
   ): Promise<Movie[]> {
-    const { movies } = await this.fetchMovies(options)
+    const movies = await this.fetchMovies(options)
     return movies.filter((movie) => movie.isStreaming)
   }
 
@@ -125,11 +107,9 @@ class MovieService {
       category?: string
       genre?: string
       query?: string
-      page?: number
-      pageSize?: number
     } = {},
   ): Promise<Movie[]> {
-    const { movies } = await this.fetchMovies(options)
+    const movies = await this.fetchMovies(options)
     return movies
   }
 

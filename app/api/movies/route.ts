@@ -16,37 +16,48 @@ export async function GET(request: NextRequest) {
   const category = searchParams.get("category") || "popular"
   const genre = searchParams.get("genre")
   const query = searchParams.get("query")
-  const page = Number.parseInt(searchParams.get("page") || "1", 10) // Get page number
-  const pageSize = Number.parseInt(searchParams.get("pageSize") || "20", 10) // Get page size (limit)
 
   try {
-    let url: string
-    const tmdbPage = page // Use the requested page for TMDB
+    let allMovies: TMDBMovie[] = []
+    const maxPages = query ? 5 : 20 // Limit search results but get more for browsing
 
-    if (query) {
-      url = `${TMDB_CONFIG.BASE_URL}/search/movie?query=${encodeURIComponent(query)}&page=${tmdbPage}&include_adult=false`
-    } else if (genre) {
-      url = `${TMDB_CONFIG.BASE_URL}/discover/movie?with_genres=${genre}&page=${tmdbPage}&include_adult=false`
-    } else {
-      url = `${TMDB_CONFIG.BASE_URL}/movie/${category}?page=${tmdbPage}&include_adult=false`
+    // Fetch multiple pages to get more movies
+    for (let page = 1; page <= maxPages; page++) {
+      let url = `${TMDB_CONFIG.BASE_URL}/movie/${category}?page=${page}&include_adult=false`
+
+      if (query) {
+        url = `${TMDB_CONFIG.BASE_URL}/search/movie?query=${encodeURIComponent(query)}&page=${page}&include_adult=false`
+      } else if (genre) {
+        url = `${TMDB_CONFIG.BASE_URL}/discover/movie?with_genres=${genre}&page=${page}&include_adult=false`
+      }
+
+      const response = await fetch(url, {
+        headers: createHeaders(),
+      })
+
+      if (!response.ok) {
+        console.warn(`TMDB API error for page ${page}: ${response.status}`)
+        break // Stop if we hit an error
+      }
+
+      const data: TMDBResponse<TMDBMovie> = await response.json()
+
+      // Filter out adult content and Philippines movies
+      const filteredResults = data.results.filter((movie) => !shouldFilterMovie(movie))
+
+      allMovies = [...allMovies, ...filteredResults]
+
+      // Stop if we've reached the last page
+      if (page >= data.total_pages) {
+        break
+      }
     }
 
-    const response = await fetch(url, {
-      headers: createHeaders(),
-    })
-
-    if (!response.ok) {
-      console.error(`TMDB API error: ${response.status} - ${response.statusText}`)
-      throw new Error(`Failed to fetch movies from TMDB: ${response.statusText}`)
-    }
-
-    const data: TMDBResponse<TMDBMovie> = await response.json()
-
-    // Filter out adult content and Philippines movies
-    const filteredResults = data.results.filter((movie) => !shouldFilterMovie(movie))
+    // Remove duplicates based on TMDB ID
+    const uniqueMovies = allMovies.filter((movie, index, self) => index === self.findIndex((m) => m.id === movie.id))
 
     // Additional filtering for quality content
-    const qualityMovies = filteredResults.filter((movie) => {
+    const qualityMovies = uniqueMovies.filter((movie) => {
       // Filter out movies with very low ratings or vote counts
       return movie.vote_average > 3.0 && movie.vote_count > 10
     })
@@ -98,9 +109,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       movies,
-      page: data.page,
-      totalPages: data.total_pages,
-      totalResults: data.total_results,
+      totalResults: movies.length,
     })
   } catch (error) {
     console.error("Error fetching movies:", error)
