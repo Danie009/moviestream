@@ -44,6 +44,16 @@ export function MovieCard({ movie, size = "medium" }: MovieCardProps) {
     return "PG"
   }
 
+  // Helper function to truncate text to a specific word count
+  const truncateWords = (text: string, wordLimit: number) => {
+    if (!text) return ""
+    const words = text.split(" ")
+    if (words.length > wordLimit) {
+      return words.slice(0, wordLimit).join(" ") + "..."
+    }
+    return text
+  }
+
   return (
     <Card
       className={`group overflow-hidden hover:scale-105 transition-all duration-300 relative cursor-pointer
@@ -72,13 +82,12 @@ export function MovieCard({ movie, size = "medium" }: MovieCardProps) {
           </div>
 
           {/* Desktop Hover Overlay - Netflix Style (hidden on mobile) */}
-          {/* Removed fixed height (h-3/5) to allow content to dictate height */}
           <div className="hidden sm:block absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
             {/* Movie Title */}
             <div className="mb-4">
               <h3 className="text-white font-bold text-lg leading-tight line-clamp-2 mb-1">{movie.title}</h3>
-              {/* Removed line-clamp-2 from description to prevent cutoff */}
-              <p className="text-white/80 text-sm">{movie.description}</p>
+              {/* Apply truncation to the description */}
+              <p className="text-white/80 text-sm">{truncateWords(movie.description, 11)}</p>
             </div>
 
             {/* Action Buttons */}
