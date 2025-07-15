@@ -5,34 +5,67 @@ import { useSearchParams } from "next/navigation"
 import { MovieCard } from "@/components/movie-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Search } from "lucide-react"
+import { Search, ChevronLeft, ChevronRight } from "lucide-react" // Import Chevron icons
 import { movieService } from "@/lib/movie-service"
 import type { Movie } from "@/lib/types"
+
+const allGenres = ["Action", "Comedy", "Drama", "Horror", "Sci-Fi"] // Declare allGenres variable
 
 function BrowseContent() {
   const searchParams = useSearchParams()
   const initialGenre = searchParams.get("genre")
   const initialSort = searchParams.get("sort") as "title" | "year" | "rating" | null
-  const initialQuery = searchParams.get("query") // Get initial query from URL
+  const initialQuery = searchParams.get("query")
+  const initialPage = Number.parseInt(searchParams.get("page") || "1", 10) // Get initial page from URL
 
-  const [searchTerm, setSearchTerm] = useState(initialQuery || "") // Initialize with URL query
+  const [searchTerm, setSearchTerm] = useState(initialQuery || "")
   const [selectedGenre, setSelectedGenre] = useState<string | null>(initialGenre)
   const [sortBy, setSortBy] = useState<"title" | "year" | "rating">(initialSort || "title")
   const [streamingMovies, setStreamingMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(initialPage) // State for current page
+  const [totalPages, setTotalPages] = useState(1) // State for total pages from API
+  const pageSize = 20 // Define page size
 
-  // Load streaming movies based on search term
+  const filteredMovies = streamingMovies // Declare filteredMovies variable
+
+  // Load streaming movies based on search term, genre, sort, and page
   useEffect(() => {
     const loadStreamingMovies = async () => {
       try {
         setLoading(true)
         setError(null)
-        const movies = await movieService.getStreamingMovies({
+        const { movies, totalPages: apiTotalPages } = await movieService.fetchMovies({
           category: "popular",
-          query: searchTerm || undefined, // Pass searchTerm to service
+          query: searchTerm || undefined,
+          genre: selectedGenre || undefined, // Pass selected genre to API
+          page: currentPage, // Pass current page to API
+          pageSize: pageSize, // Pass page size to API
         })
-        setStreamingMovies(movies)
+
+        // Filter and sort locally after fetching the current page's movies
+        const filteredAndSortedMovies = movies
+          .filter((movie) => {
+            const matchesSearch =
+              movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              movie.description.toLowerCase().includes(searchTerm.toLowerCase())
+            const matchesGenre = !selectedGenre || movie.genre.includes(selectedGenre)
+            return matchesSearch && matchesGenre
+          })
+          .sort((a, b) => {
+            switch (sortBy) {
+              case "year":
+                return b.releaseYear - a.releaseYear
+              case "rating":
+                return b.rating - a.rating
+              default:
+                return a.title.localeCompare(b.title)
+            }
+          })
+
+        setStreamingMovies(filteredAndSortedMovies)
+        setTotalPages(apiTotalPages)
       } catch (err) {
         console.error("Error loading movies:", err)
         setError("Failed to load movies. Please try again later.")
@@ -53,44 +86,38 @@ function BrowseContent() {
     return () => {
       window.removeEventListener("moviesUpdated", handleMoviesUpdate)
     }
-  }, [searchTerm]) // Re-run when searchTerm changes
+  }, [searchTerm, selectedGenre, sortBy, currentPage, pageSize]) // Re-run when these dependencies change
 
-  // Filter and sort movies
-  const filteredMovies = streamingMovies
-    .filter((movie) => {
-      const matchesSearch =
-        movie.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        movie.description.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchesGenre = !selectedGenre || movie.genre.includes(selectedGenre)
-      return matchesSearch && matchesGenre
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case "year":
-          return b.releaseYear - a.releaseYear
-        case "rating":
-          return b.rating - a.rating
-        default:
-          return a.title.localeCompare(b.title)
-      }
-    })
-
-  // Get all unique genres from streaming movies
-  const allGenres = Array.from(new Set(streamingMovies.flatMap((movie) => movie.genre)))
-
-  // Update local state when URL search params change (e.g., from header search)
+  // Update local state when URL search params change (e.g., from header search or direct URL)
   useEffect(() => {
     const currentQuery = searchParams.get("query")
+    const currentGenre = searchParams.get("genre")
+    const currentSort = searchParams.get("sort") as "title" | "year" | "rating" | null
+    const currentPageParam = Number.parseInt(searchParams.get("page") || "1", 10)
+
     if (currentQuery !== searchTerm) {
       setSearchTerm(currentQuery || "")
     }
-    if (initialGenre && initialGenre !== selectedGenre) {
-      setSelectedGenre(initialGenre)
+    if (currentGenre !== selectedGenre) {
+      setSelectedGenre(currentGenre)
     }
-    if (initialSort && initialSort !== sortBy) {
-      setSortBy(initialSort)
+    if (currentSort !== sortBy) {
+      setSortBy(currentSort || "title")
     }
-  }, [searchParams, initialGenre, initialSort, searchTerm, selectedGenre, sortBy])
+    if (currentPageParam !== currentPage) {
+      setCurrentPage(currentPageParam)
+    }
+  }, [searchParams])
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage)
+      // Optionally update URL to reflect page change
+      const newSearchParams = new URLSearchParams(searchParams.toString())
+      newSearchParams.set("page", newPage.toString())
+      window.history.pushState(null, "", `?${newSearchParams.toString()}`)
+    }
+  }
 
   // Loading state
   if (loading) {
@@ -215,10 +242,32 @@ function BrowseContent() {
             onClick={() => {
               setSearchTerm("")
               setSelectedGenre(null)
+              setCurrentPage(1) // Reset page on clear
             }}
             className="mt-4"
           >
             Clear Filters
+          </Button>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-8">
+          <Button variant="outline" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+            <ChevronLeft className="h-4 w-4 mr-2" />
+            Previous
+          </Button>
+          <span className="text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
       )}

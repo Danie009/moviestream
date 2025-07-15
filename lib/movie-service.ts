@@ -1,5 +1,12 @@
 import type { Movie, StreamingStatus } from "./types"
 
+interface FetchMoviesResponse {
+  movies: Movie[]
+  page: number
+  totalPages: number
+  totalResults: number
+}
+
 class MovieService {
   private streamingStatusKey = "streaming-status"
   private baseUrl = "/api/movies"
@@ -18,18 +25,22 @@ class MovieService {
     window.dispatchEvent(new CustomEvent("moviesUpdated", { detail: statuses }))
   }
 
-  // Fetch movies from TMDB API
+  // Fetch movies from TMDB API with pagination
   async fetchMovies(
     options: {
       category?: string
       genre?: string
       query?: string
+      page?: number // Added page parameter
+      pageSize?: number // Added pageSize parameter
     } = {},
-  ): Promise<Movie[]> {
-    const { category = "popular", genre, query } = options
+  ): Promise<FetchMoviesResponse> {
+    const { category = "popular", genre, query, page = 1, pageSize = 20 } = options
 
     const params = new URLSearchParams({
       category,
+      page: page.toString(),
+      pageSize: pageSize.toString(),
     })
 
     if (genre) params.append("genre", genre)
@@ -41,7 +52,7 @@ class MovieService {
       throw new Error("Failed to fetch movies")
     }
 
-    const data = await response.json()
+    const data: FetchMoviesResponse = await response.json()
 
     // Merge with streaming status
     const streamingStatuses = this.getStreamingStatuses()
@@ -57,7 +68,12 @@ class MovieService {
       }
     })
 
-    return moviesWithStatus
+    return {
+      movies: moviesWithStatus,
+      page: data.page,
+      totalPages: data.totalPages,
+      totalResults: data.totalResults,
+    }
   }
 
   // Fetch single movie details
@@ -95,9 +111,11 @@ class MovieService {
       category?: string
       genre?: string
       query?: string
+      page?: number
+      pageSize?: number
     } = {},
   ): Promise<Movie[]> {
-    const movies = await this.fetchMovies(options)
+    const { movies } = await this.fetchMovies(options)
     return movies.filter((movie) => movie.isStreaming)
   }
 
@@ -107,9 +125,12 @@ class MovieService {
       category?: string
       genre?: string
       query?: string
+      page?: number
+      pageSize?: number
     } = {},
   ): Promise<Movie[]> {
-    return await this.fetchMovies(options)
+    const { movies } = await this.fetchMovies(options)
+    return movies
   }
 
   // Toggle streaming status
