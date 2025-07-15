@@ -82,7 +82,8 @@ export function MovieCard({ movie, size = "medium" }: MovieCardProps) {
           </div>
 
           {/* Desktop Hover Overlay - Netflix Style (hidden on mobile) */}
-          <div className="hidden sm:block absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
+          {/* Increased opacity from black/60 to black/80 and from-black to from-black/90 */}
+          <div className="hidden sm:block absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4">
             {/* Movie Title */}
             <div className="mb-4">
               <h3 className="text-white font-bold text-lg leading-tight line-clamp-2 mb-1">{movie.title}</h3>
