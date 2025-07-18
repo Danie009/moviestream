@@ -187,7 +187,7 @@ export default function WatchMoviePage() {
         onMouseMove={() => setShowControls(true)}
         onMouseLeave={() => setShowControls(false)}
       >
-        <video
+       {/* <video
           ref={videoRef}
           src={movie.videoUrl}
           className="w-full h-full object-cover"
@@ -195,7 +195,14 @@ export default function WatchMoviePage() {
           onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
-        />
+        /> */}
+
+          <iframe
+            src={`https://player.embed-api.stream/?id=${movie.tmdbId}&type=movie`}
+            frameBorder="0"
+            allowFullScreen
+            className="w-full h-full rounded-md"
+          />
 
         {/* Video Controls Overlay */}
         <div
