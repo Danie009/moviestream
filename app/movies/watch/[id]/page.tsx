@@ -246,10 +246,16 @@ export default function WatchMoviePage() {
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
     }
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+    return `${minutes}:${seconds().toString().padStart(2, "0")}`
   }
   // Example: Block common ad domains before loading the iframe
-  const adDomains = ["doubleclick.net", "googleads.com", "googlesyndication.com", "adservice.google.com"]
+  const adDomains = [
+    "doubleclick.net",
+    "googleads.com",
+    "googlesyndication.com",
+    "adservice.google.com",
+    "offer.alibaba.com", // Added the new URL here
+  ]
 
   const originalCreateElement = document.createElement
   document.createElement = (tag) => {
@@ -260,7 +266,7 @@ export default function WatchMoviePage() {
       // Modify the iframe src to strip tracking/ads
       if (originalSrc && adDomains.some((domain) => originalSrc.includes(domain))) {
         iframe.removeAttribute("src")
-        console.log("Blocked ad domain in iframe")
+        console.log("Blocked ad domain in iframe:", originalSrc) // Log the blocked URL
       }
       return iframe
     }
