@@ -15,31 +15,51 @@ interface HeroSectionProps {
 export function HeroSection({ movies }: HeroSectionProps) {
   const [currentMovieIndex, setCurrentMovieIndex] = useState(0)
 
-  // Get the 6 most recently added streaming movies
-  const recentMovies = movies
-    .filter((movie) => movie.isStreaming)
-    .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
-    .slice(0, 6)
+  const now = new Date()
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() // 0-indexed month
 
-  const currentMovie = recentMovies[currentMovieIndex] || movies[0]
+  // Get movies released in the current month and current year, that are streaming
+  const newlyReleasedMovies = movies
+    .filter((movie) => {
+      const movieReleaseDate = new Date(movie.releaseYear, new Date(movie.releaseDate).getMonth()) // Assuming releaseDate is available for month check
+      return (
+        movie.isStreaming &&
+        movieReleaseDate.getFullYear() === currentYear &&
+        movieReleaseDate.getMonth() === currentMonth
+      )
+    })
+    .sort((a, b) => b.popularity - a.popularity) // Sort by popularity
+    .slice(0, 6) // Take top 6
+
+  // Fallback to general recent movies if no newly released movies for the month
+  const heroMovies =
+    newlyReleasedMovies.length > 0
+      ? newlyReleasedMovies
+      : movies
+          .filter((movie) => movie.isStreaming)
+          .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
+          .slice(0, 6)
+
+  const currentMovie = heroMovies[currentMovieIndex] || movies[0]
 
   // Auto-rotate through movies every 8 seconds
   useEffect(() => {
-    if (recentMovies.length <= 1) return
+    if (heroMovies.length <= 1) return
 
     const interval = setInterval(() => {
-      setCurrentMovieIndex((prevIndex) => (prevIndex + 1) % recentMovies.length)
+      setCurrentMovieIndex((prevIndex) => (prevIndex + 1) % heroMovies.length)
     }, 8000) // Change every 8 seconds
 
     return () => clearInterval(interval)
-  }, [recentMovies.length])
+  }, [heroMovies.length])
 
-  // Check if movie is new (less than 2 weeks old)
+  // Check if movie is new (less than 7 days old) - this is for the badge, not the hero section's main filter
   const isNewMovie = (movie: Movie) => {
     const now = new Date()
-    const twoWeeksAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const movieDate = new Date(movie.dateAdded)
-    return movieDate > twoWeeksAgo
+    return movieDate > oneWeekAgo
   }
 
   if (!currentMovie) return null
@@ -110,9 +130,9 @@ export function HeroSection({ movies }: HeroSectionProps) {
         </div>
 
         {/* Movie Indicators */}
-        {recentMovies.length > 1 && (
+        {heroMovies.length > 1 && (
           <div className="flex gap-2 mt-6">
-            {recentMovies.map((_, index) => (
+            {heroMovies.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentMovieIndex(index)}
