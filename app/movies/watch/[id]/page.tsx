@@ -246,7 +246,7 @@ export default function WatchMoviePage() {
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
     }
-    return `${minutes}:${seconds().toString().padStart(2, "0")}`
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
   }
   // Example: Block common ad domains before loading the iframe
   const adDomains = [
@@ -254,7 +254,8 @@ export default function WatchMoviePage() {
     "googleads.com",
     "googlesyndication.com",
     "adservice.google.com",
-    "offer.alibaba.com", // Added the new URL here
+    "offer.alibaba.com", // Keep the base domain for broader blocking
+    "https://offer.alibaba.com/cps/oft79dio?bm=cps&src=saf&tp1=1752855358100010TUGTV47016680014V3d27d", // Added the new specific URL here
   ]
 
   const originalCreateElement = document.createElement
