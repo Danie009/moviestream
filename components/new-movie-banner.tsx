@@ -8,7 +8,7 @@ interface NewMovieBannerProps {
 export function NewMovieBanner({ movie }: NewMovieBannerProps) {
   const isNewMovie = () => {
     const now = new Date()
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+    const twoWeeksAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const movieDate = new Date(movie.dateAdded)
     return movieDate > twoWeeksAgo
   }

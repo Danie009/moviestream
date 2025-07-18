@@ -37,7 +37,7 @@ export function HeroSection({ movies }: HeroSectionProps) {
   // Check if movie is new (less than 2 weeks old)
   const isNewMovie = (movie: Movie) => {
     const now = new Date()
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+    const twoWeeksAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const movieDate = new Date(movie.dateAdded)
     return movieDate > twoWeeksAgo
   }
