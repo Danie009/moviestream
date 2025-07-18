@@ -1,3 +1,5 @@
+"use client" // Added "use client" directive
+
 import type React from "react"
 import { ProtectedRoute } from "@/components/protected-route"
 import { MovieHeader } from "@/components/movie-header"
