@@ -1,5 +1,4 @@
 import Link from "next/link"
-// Removed: import Image from "next/image"
 
 interface LogoProps {
   size?: "sm" | "md" | "lg"
@@ -17,9 +16,8 @@ export function Logo({ size = "md", showText = true, href = "/", className = "" 
 
   const logoContent = (
     <div className={`flex items-center gap-3 ${className}`}>
-      {/* Replaced next/image with standard <img> tag */}
       <img
-        src="/logo.png"
+        src="/logo.png" // Using the direct path to the re-added image
         alt="MovieStream Logo"
         width={sizes[size].width}
         height={sizes[size].height}
