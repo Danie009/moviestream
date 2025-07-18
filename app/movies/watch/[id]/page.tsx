@@ -178,6 +178,30 @@ export default function WatchMoviePage() {
     }
     return `${minutes}:${seconds.toString().padStart(2, "0")}`
   }
+  // Example: Block common ad domains before loading the iframe
+  const adDomains = [
+    'doubleclick.net',
+    'googleads.com',
+    'googlesyndication.com',
+    'adservice.google.com'
+  ];
+
+  const originalCreateElement = document.createElement;
+    document.createElement = function (tag) {
+    if (tag.toLowerCase() === 'iframe') {
+      const iframe = originalCreateElement.call(document, tag);
+      const originalSrc = iframe.getAttribute('src');
+      
+      // Modify the iframe src to strip tracking/ads
+      if (originalSrc && adDomains.some(domain => originalSrc.includes(domain))) {
+        iframe.removeAttribute('src');
+        console.log('Blocked ad domain in iframe');
+      }
+      return iframe;
+    }
+    return originalCreateElement.call(document, tag);
+  };
+
 
   return (
     <div className="min-h-screen bg-black">
