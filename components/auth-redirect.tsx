@@ -15,16 +15,13 @@ export function AuthRedirect({ children }: AuthRedirectProps) {
   const router = useRouter()
 
   useEffect(() => {
-    // Only redirect if user is already authenticated
-    if (!loading && user) {
-      if (user.role === "admin" || user.role === "moderator") {
-        router.push("/dashboard")
-      } else {
-        router.push("/movies")
-      }
+    // Only redirect if user is already authenticated and is an admin/moderator
+    // and they are on the root path.
+    if (!loading && user && (user.role === "admin" || user.role === "moderator") && window.location.pathname === "/") {
+      router.push("/dashboard")
     }
   }, [user, loading, router])
 
-  // Show the page content (don't redirect if not authenticated)
+  // Show the page content (don't redirect if not authenticated or not admin/moderator)
   return <>{children}</>
 }

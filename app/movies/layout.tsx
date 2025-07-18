@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { ProtectedRoute } from "@/components/protected-route"
+// import { ProtectedRoute } from "@/components/protected-route" // Removed ProtectedRoute
 import { MovieHeader } from "@/components/movie-header"
 import "./movies.css"
 
@@ -11,11 +11,10 @@ export default function MoviesLayout({
   children: React.ReactNode
 }) {
   return (
-    <ProtectedRoute allowedRoles={["user", "admin", "moderator"]}>
-      <div className="min-h-screen bg-background">
-        <MovieHeader />
-        {children}
-      </div>
-    </ProtectedRoute>
+    // Removed ProtectedRoute wrapper to allow unauthenticated access
+    <div className="min-h-screen bg-background">
+      <MovieHeader />
+      {children}
+    </div>
   )
 }

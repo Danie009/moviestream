@@ -60,11 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set cookie for middleware
         document.cookie = `user=${userString}; path=/; max-age=86400`
 
-        // Redirect based on role
+        // Redirect based on role for admin/moderator
         if (userWithoutPassword.role === "admin" || userWithoutPassword.role === "moderator") {
           router.push("/dashboard")
         } else {
-          router.push("/movies")
+          // For regular users, just log them in without immediate redirect
+          // They can navigate to movies or other pages manually
         }
 
         return true
@@ -87,9 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Set cookie for middleware
           document.cookie = `user=${userString}; path=/; max-age=86400`
 
-          // Redirect to movies page for regular users
-          router.push("/movies")
-
+          // For regular users, just log them in without immediate redirect
           return true
         }
       }
@@ -143,9 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set cookie for middleware
         document.cookie = `user=${userString}; path=/; max-age=86400`
 
-        // Redirect to movies page for new users
-        router.push("/movies")
-
+        // For new users, just log them in without immediate redirect
         return true
       }
       return false

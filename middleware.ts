@@ -8,28 +8,16 @@ export function middleware(request: NextRequest) {
   // Get the user from the cookie
   const user = request.cookies.get("user")?.value ? JSON.parse(request.cookies.get("user")?.value || "{}") : null
 
-  // Define public paths that don't require authentication
-  const isPublicPath = path === "/" || path.startsWith("/auth/")
-
-  // If user is authenticated and trying to access public paths, let them
-  // This prevents redirects from the landing page
-  if (isPublicPath) {
-    return NextResponse.next()
-  }
-
-  // If user is not authenticated and trying to access protected paths, redirect to login
-  if (!user && !isPublicPath) {
-    return NextResponse.redirect(new URL("/auth/login", request.url))
-  }
-
-  // If user is authenticated, check role-based access
-  if (user) {
-    // Dashboard paths are only for admin and moderator
-    if (path.startsWith("/dashboard") && user.role !== "admin" && user.role !== "moderator") {
-      return NextResponse.redirect(new URL("/movies", request.url))
+  // Dashboard paths are only for admin and moderator
+  if (path.startsWith("/dashboard")) {
+    if (!user || (user.role !== "admin" && user.role !== "moderator")) {
+      // If not authenticated or not authorized, redirect to login
+      return NextResponse.redirect(new URL("/auth/login", request.url))
     }
   }
 
+  // For all other paths (including /, /auth/*, /movies/*), allow access without authentication.
+  // The client-side ProtectedRoute will handle specific redirects if needed for other pages.
   return NextResponse.next()
 }
 
@@ -43,7 +31,8 @@ export const config = {
      * 3. /fonts (inside /public)
      * 4. /examples (inside /public)
      * 5. all root files inside /public (e.g. /favicon.ico)
+     * 6. Only apply to /dashboard paths for now
      */
-    "/((?!api|_next|fonts|examples|[\\w-]+\\.\\w+).*)",
+    "/dashboard/:path*", // Protect all paths under /dashboard
   ],
 }
