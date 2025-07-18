@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
       videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
       duration: 120, // Default duration
       releaseYear: new Date(tmdbMovie.release_date || "2000-01-01").getFullYear(),
-      releaseDate: tmdbMovie.release_date || "2000-01-01", // Store the full date string
+      releaseDate: tmdbMovie.release_date || "2000-01-01", // Map the full release_date
       genre: tmdbMovie.genre_ids.map((id) => GENRE_MAP[id]).filter(Boolean),
       language:
         tmdbMovie.original_language === "en"

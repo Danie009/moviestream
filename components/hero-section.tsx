@@ -20,16 +20,13 @@ export function HeroSection({ movies }: HeroSectionProps) {
   const currentMonth = now.getMonth() // 0-indexed month
 
   // Get movies released in the current month and current year, that are streaming
-  const newlyReleasedMovies = movies
+  const newlyReleasedThisMonthAndYear = movies
     .filter((movie) => {
-      // Ensure releaseDate is a valid string before creating a Date object
-      if (!movie.releaseDate) return false
-
-      const movieReleaseDateObj = new Date(movie.releaseDate)
+      const movieReleaseDate = new Date(movie.releaseDate)
       return (
         movie.isStreaming &&
-        movieReleaseDateObj.getFullYear() === currentYear &&
-        movieReleaseDateObj.getMonth() === currentMonth
+        movieReleaseDate.getFullYear() === currentYear &&
+        movieReleaseDate.getMonth() === currentMonth
       )
     })
     .sort((a, b) => b.popularity - a.popularity) // Sort by popularity
@@ -37,8 +34,8 @@ export function HeroSection({ movies }: HeroSectionProps) {
 
   // Fallback to general recent movies if no newly released movies for the month
   const heroMovies =
-    newlyReleasedMovies.length > 0
-      ? newlyReleasedMovies
+    newlyReleasedThisMonthAndYear.length > 0
+      ? newlyReleasedThisMonthAndYear
       : movies
           .filter((movie) => movie.isStreaming)
           .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
