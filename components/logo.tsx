@@ -1,5 +1,5 @@
-import Image from "next/image"
 import Link from "next/link"
+// Removed: import Image from "next/image"
 
 interface LogoProps {
   size?: "sm" | "md" | "lg"
@@ -17,13 +17,13 @@ export function Logo({ size = "md", showText = true, href = "/", className = "" 
 
   const logoContent = (
     <div className={`flex items-center gap-3 ${className}`}>
-      <Image
+      {/* Replaced next/image with standard <img> tag */}
+      <img
         src="/logo.png"
         alt="MovieStream Logo"
         width={sizes[size].width}
         height={sizes[size].height}
         className="rounded-xl"
-        unoptimized // Re-added unoptimized prop
       />
       {showText && <span className={`font-bold ${sizes[size].textSize}`}>MovieStream</span>}
     </div>
