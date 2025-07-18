@@ -11,6 +11,69 @@ import { MovieCard } from "@/components/movie-card"
 import { useAuth } from "@/components/auth-provider"
 import type { WatchProgress, Movie } from "@/lib/types"
 
+// A simple list of common English stop words to ignore in similarity calculation
+const STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "but",
+  "by",
+  "for",
+  "if",
+  "in",
+  "into",
+  "is",
+  "it",
+  "no",
+  "not",
+  "of",
+  "on",
+  "or",
+  "such",
+  "that",
+  "the",
+  "their",
+  "then",
+  "there",
+  "these",
+  "they",
+  "this",
+  "to",
+  "was",
+  "will",
+  "with",
+])
+
+// Function to calculate similarity based on description keyword overlap
+function getSimilarityScore(desc1: string, desc2: string): number {
+  if (!desc1 || !desc2) return 0
+
+  const words1 = new Set(
+    desc1
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((word) => word.length > 2 && !STOP_WORDS.has(word)),
+  )
+  const words2 = new Set(
+    desc2
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((word) => word.length > 2 && !STOP_WORDS.has(word)),
+  )
+
+  let commonWords = 0
+  for (const word of words1) {
+    if (words2.has(word)) {
+      commonWords++
+    }
+  }
+  return commonWords
+}
+
 export default function WatchMoviePage() {
   const params = useParams()
   const router = useRouter()
@@ -36,11 +99,18 @@ export default function WatchMoviePage() {
         if (movieData) {
           setMovie(movieData)
 
-          // Get related movies based on genre
+          // Get related movies based on description similarity
           const allMovies = await movieService.getStreamingMovies({ category: "popular" })
           const related = allMovies
-            .filter((m) => m.id !== movieData.id && m.genre.some((genre) => movieData.genre.includes(genre)))
-            .slice(0, 4)
+            .filter((m) => m.id !== movieData.id) // Exclude the current movie
+            .map((m) => ({
+              movie: m,
+              score: getSimilarityScore(movieData.description, m.description),
+            }))
+            .sort((a, b) => b.score - a.score) // Sort by similarity score descending
+            .slice(0, 4) // Take top 4
+            .map((item) => item.movie) // Extract just the movie object
+
           setRelatedMovies(related)
         }
       } catch (error) {
@@ -179,29 +249,23 @@ export default function WatchMoviePage() {
     return `${minutes}:${seconds.toString().padStart(2, "0")}`
   }
   // Example: Block common ad domains before loading the iframe
-  const adDomains = [
-    'doubleclick.net',
-    'googleads.com',
-    'googlesyndication.com',
-    'adservice.google.com'
-  ];
+  const adDomains = ["doubleclick.net", "googleads.com", "googlesyndication.com", "adservice.google.com"]
 
-  const originalCreateElement = document.createElement;
-    document.createElement = function (tag) {
-    if (tag.toLowerCase() === 'iframe') {
-      const iframe = originalCreateElement.call(document, tag);
-      const originalSrc = iframe.getAttribute('src');
-      
+  const originalCreateElement = document.createElement
+  document.createElement = (tag) => {
+    if (tag.toLowerCase() === "iframe") {
+      const iframe = originalCreateElement.call(document, tag)
+      const originalSrc = iframe.getAttribute("src")
+
       // Modify the iframe src to strip tracking/ads
-      if (originalSrc && adDomains.some(domain => originalSrc.includes(domain))) {
-        iframe.removeAttribute('src');
-        console.log('Blocked ad domain in iframe');
+      if (originalSrc && adDomains.some((domain) => originalSrc.includes(domain))) {
+        iframe.removeAttribute("src")
+        console.log("Blocked ad domain in iframe")
       }
-      return iframe;
+      return iframe
     }
-    return originalCreateElement.call(document, tag);
-  };
-
+    return originalCreateElement.call(document, tag)
+  }
 
   return (
     <div className="min-h-screen bg-black">
