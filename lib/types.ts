@@ -16,6 +16,7 @@ export interface Movie {
   videoUrl: string
   duration: number
   releaseYear: number
+  releaseDate: string // Added to store the full release date string
   genre: string[]
   language: string
   rating: number

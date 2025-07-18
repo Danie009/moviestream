@@ -51,6 +51,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         : "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
       duration: movieData.runtime || 120,
       releaseYear: new Date(movieData.release_date || "2000-01-01").getFullYear(),
+      releaseDate: movieData.release_date || "2000-01-01", // Store the full date string
       genre: movieData.genres.map((g) => g.name),
       language: movieData.spoken_languages[0]?.english_name || "English",
       rating: Math.round(movieData.vote_average * 10) / 10,

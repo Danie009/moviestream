@@ -22,11 +22,14 @@ export function HeroSection({ movies }: HeroSectionProps) {
   // Get movies released in the current month and current year, that are streaming
   const newlyReleasedMovies = movies
     .filter((movie) => {
-      const movieReleaseDate = new Date(movie.releaseYear, new Date(movie.releaseDate).getMonth()) // Assuming releaseDate is available for month check
+      // Ensure releaseDate is a valid string before creating a Date object
+      if (!movie.releaseDate) return false
+
+      const movieReleaseDateObj = new Date(movie.releaseDate)
       return (
         movie.isStreaming &&
-        movieReleaseDate.getFullYear() === currentYear &&
-        movieReleaseDate.getMonth() === currentMonth
+        movieReleaseDateObj.getFullYear() === currentYear &&
+        movieReleaseDateObj.getMonth() === currentMonth
       )
     })
     .sort((a, b) => b.popularity - a.popularity) // Sort by popularity
