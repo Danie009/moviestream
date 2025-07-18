@@ -208,7 +208,7 @@ export default function WatchMoviePage() {
         <div
           className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/60 transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}
         >
-          {/* Top Controls 
+          {/* Top Controls */}
           <div className="absolute top-0 left-0 right-0 p-6 flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => router.back()}>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -219,9 +219,9 @@ export default function WatchMoviePage() {
               <Download className="h-4 w-4 mr-2" />
               Download
             </Button>
-          </div> */}
+          </div>
 
-          {/* Center Play Button 
+          {/* Center Play Button */}
           <div className="absolute inset-0 flex items-center justify-center">
             <Button
               variant="ghost"
@@ -231,11 +231,11 @@ export default function WatchMoviePage() {
             >
               {isPlaying ? <Pause className="h-8 w-8 text-white" /> : <Play className="h-8 w-8 text-white ml-1" />}
             </Button>
-          </div> */}
+          </div>
 
-          {/* Bottom Controls 
+          {/* Bottom Controls */}
           <div className="absolute bottom-0 left-0 right-0 p-6">
-            {/* Progress Bar 
+            {/* Progress Bar */}
             <div
               className="w-full bg-white/20 rounded-full h-1 mb-4 cursor-pointer"
               onClick={(e) => {
@@ -252,7 +252,7 @@ export default function WatchMoviePage() {
               />
             </div>
 
-            {/* Control Buttons 
+            {/* Control Buttons */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="sm" onClick={togglePlay}>
@@ -275,7 +275,7 @@ export default function WatchMoviePage() {
               <Button variant="ghost" size="sm" onClick={toggleFullscreen}>
                 <Maximize className="h-5 w-5" />
               </Button>
-            </div> */}
+            </div>
           </div>
         </div>
       </div>
