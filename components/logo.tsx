@@ -23,8 +23,7 @@ export function Logo({ size = "md", showText = true, href = "/", className = "" 
         width={sizes[size].width}
         height={sizes[size].height}
         className="rounded-xl"
-        priority
-        unoptimized
+        // Removed 'priority' and 'unoptimized' props
       />
       {showText && <span className={`font-bold ${sizes[size].textSize}`}>MovieStream</span>}
     </div>
