@@ -278,7 +278,8 @@ export default function WatchMoviePage() {
     <div className="min-h-screen bg-black">
       {/* Video Player */}
       <div
-        className="relative w-full h-screen"
+        className="relative w-full"
+        style={{ height: '90vh' }}
         onMouseMove={() => setShowControls(true)}
         onMouseLeave={() => setShowControls(false)}
       >
@@ -296,7 +297,8 @@ export default function WatchMoviePage() {
           src={`https://player.embed-api.stream/?id=${movie.tmdbId}&type=movie`}
           frameBorder="0"
           allowFullScreen
-          className="w-full h-full rounded-md"
+          style={{ height: '90vh' }}
+          className="w-full rounded-md"
         />
 
         {/* Video Controls Overlay */}

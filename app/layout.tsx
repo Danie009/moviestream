@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     apple: "/logo.png",
   },
   themeColor: "#E83FB8",
-    generator: 'v0.dev'
+    generator: 'v0.app'
 }
 
 export default function RootLayout({
