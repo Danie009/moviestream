@@ -76,6 +76,15 @@ export function MovieCard({ movie, size = "medium" }: MovieCardProps) {
           {/* New Movie Banner */}
           <NewMovieBanner movie={movie} />
 
+          {/* Mobile Play Button Overlay - Shows on hover/touch */}
+          <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 active:opacity-100 transition-opacity duration-300 flex items-center justify-center sm:hidden">
+            <Button size="sm" className="rounded-full w-10 h-10 p-0 bg-white hover:bg-white/90 text-black" asChild>
+              <Link href={`/movies/watch/${movie.id}`}>
+                <Play className="h-4 w-4 fill-current" />
+              </Link>
+            </Button>
+          </div>
+
           {/* Mobile Title Overlay - Always visible on mobile */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-1.5 sm:hidden">
             <h3 className="text-white font-medium text-[10px] leading-tight line-clamp-2">{movie.title}</h3>
