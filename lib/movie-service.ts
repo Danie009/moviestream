@@ -1,4 +1,5 @@
 import type { Movie, StreamingStatus } from "./types"
+import { movieLogger } from "./movie-logger"
 
 class MovieService {
   private streamingStatusKey = "streaming-status"
@@ -43,9 +44,12 @@ class MovieService {
 
     const data: { movies: Movie[]; totalResults: number } = await response.json()
 
+    // Filter out removed movies
+    const filteredMovies = data.movies.filter((movie) => !movieLogger.isMovieRemoved(movie.tmdbId))
+
     // Merge with streaming status
     const streamingStatuses = this.getStreamingStatuses()
-    const moviesWithStatus = data.movies.map((movie: Movie) => {
+    const moviesWithStatus = filteredMovies.map((movie: Movie) => {
       const status = streamingStatuses.find((s) => s.tmdbId === movie.tmdbId)
       return {
         ...movie,
@@ -56,6 +60,16 @@ class MovieService {
         videoUrl: status?.videoUrl || movie.videoUrl,
       }
     })
+
+    // Log new movies for banner tracking
+    moviesWithStatus.forEach((movie) => {
+      if (movie.isStreaming) {
+        movieLogger.logNewMovie(movie.tmdbId, movie.title)
+      }
+    })
+
+    // Clean up old entries
+    movieLogger.cleanupOldEntries()
 
     return moviesWithStatus
   }
@@ -70,6 +84,11 @@ class MovieService {
       }
 
       const movie = await response.json()
+
+      // Check if movie is removed
+      if (movieLogger.isMovieRemoved(movie.tmdbId)) {
+        return null
+      }
 
       // Merge with streaming status
       const streamingStatuses = this.getStreamingStatuses()
@@ -119,7 +138,16 @@ class MovieService {
     const existingIndex = statuses.findIndex((s) => s.tmdbId === tmdbId)
 
     if (existingIndex >= 0) {
+      const wasStreaming = statuses[existingIndex].isStreaming
       statuses[existingIndex].isStreaming = !statuses[existingIndex].isStreaming
+
+      // If removing from streaming, log it
+      if (wasStreaming && !statuses[existingIndex].isStreaming) {
+        // We need to get the movie title - for now we'll use a placeholder
+        // In a real app, you might want to pass the movie object or fetch it
+        movieLogger.logRemovedMovie(tmdbId, `Movie ID ${tmdbId}`, "Removed from streaming via dashboard")
+      }
+
       if (statuses[existingIndex].isStreaming) {
         delete statuses[existingIndex].scheduledRemoval
       }
@@ -130,6 +158,9 @@ class MovieService {
         featured: false,
         dateAdded: new Date(),
       })
+
+      // Log as removed since we're setting isStreaming to false
+      movieLogger.logRemovedMovie(tmdbId, `Movie ID ${tmdbId}`, "Removed from streaming via dashboard")
     }
 
     this.saveStreamingStatuses(statuses)

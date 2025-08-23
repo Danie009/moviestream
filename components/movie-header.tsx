@@ -50,9 +50,6 @@ export function MovieHeader() {
             <Link href="/movies/browse" className="text-sm font-medium hover:text-primary transition-colors">
               Browse
             </Link>
-            <Link href="/movies/my-list" className="text-sm font-medium hover:text-primary transition-colors">
-              My List
-            </Link>
           </nav>
         </div>
 
