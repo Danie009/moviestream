@@ -74,6 +74,53 @@ class MovieService {
     return moviesWithStatus
   }
 
+  // **NEW: Fetch movies including removed ones (for admin dashboard)**
+  async fetchAllMoviesIncludingRemoved(
+    options: {
+      category?: string
+      genre?: string
+      query?: string
+    } = {},
+  ): Promise<Movie[]> {
+    const { category = "popular", genre, query } = options
+
+    const params = new URLSearchParams({
+      category,
+    })
+
+    if (genre) params.append("genre", genre)
+    if (query) params.append("query", query)
+
+    const response = await fetch(`${this.baseUrl}?${params}`)
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch movies")
+    }
+
+    const data: { movies: Movie[]; totalResults: number } = await response.json()
+
+    // DON'T filter out removed movies - include them all
+    const allMovies = data.movies
+
+    // Merge with streaming status
+    const streamingStatuses = this.getStreamingStatuses()
+    const moviesWithStatus = allMovies.map((movie: Movie) => {
+      const status = streamingStatuses.find((s) => s.tmdbId === movie.tmdbId)
+      const isRemoved = movieLogger.isMovieRemoved(movie.tmdbId)
+
+      return {
+        ...movie,
+        isStreaming: isRemoved ? false : (status?.isStreaming ?? true), // If removed, set streaming to false
+        featured: status?.featured ?? movie.featured,
+        dateAdded: status?.dateAdded ? new Date(status.dateAdded) : movie.dateAdded,
+        scheduledRemoval: status?.scheduledRemoval,
+        videoUrl: status?.videoUrl || movie.videoUrl,
+      }
+    })
+
+    return moviesWithStatus
+  }
+
   // Fetch single movie details
   async fetchMovieDetails(id: string): Promise<Movie | null> {
     try {
@@ -120,7 +167,7 @@ class MovieService {
     return movies.filter((movie) => movie.isStreaming)
   }
 
-  // Get all movies (for dashboard)
+  // Get all movies (for dashboard) - now includes removed movies
   async getAllMovies(
     options: {
       category?: string
@@ -128,7 +175,7 @@ class MovieService {
       query?: string
     } = {},
   ): Promise<Movie[]> {
-    const movies = await this.fetchMovies(options)
+    const movies = await this.fetchAllMoviesIncludingRemoved(options)
     return movies
   }
 
@@ -148,6 +195,11 @@ class MovieService {
         movieLogger.logRemovedMovie(tmdbId, `Movie ID ${tmdbId}`, "Removed from streaming via dashboard")
       }
 
+      // **NEW: If adding back to streaming, restore from removed log**
+      if (!wasStreaming && statuses[existingIndex].isStreaming) {
+        movieLogger.restoreRemovedMovie(tmdbId)
+      }
+
       if (statuses[existingIndex].isStreaming) {
         delete statuses[existingIndex].scheduledRemoval
       }
@@ -164,6 +216,32 @@ class MovieService {
     }
 
     this.saveStreamingStatuses(statuses)
+  }
+
+  // **NEW: Restore a removed movie**
+  restoreMovie(tmdbId: number): void {
+    // Remove from removed log
+    const restored = movieLogger.restoreRemovedMovie(tmdbId)
+
+    if (restored) {
+      // Set streaming status to true
+      const statuses = this.getStreamingStatuses()
+      const existingIndex = statuses.findIndex((s) => s.tmdbId === tmdbId)
+
+      if (existingIndex >= 0) {
+        statuses[existingIndex].isStreaming = true
+        delete statuses[existingIndex].scheduledRemoval
+      } else {
+        statuses.push({
+          tmdbId,
+          isStreaming: true,
+          featured: false,
+          dateAdded: new Date(),
+        })
+      }
+
+      this.saveStreamingStatuses(statuses)
+    }
   }
 
   // Schedule removal

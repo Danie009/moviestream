@@ -23,15 +23,19 @@ import {
   Eye,
   Copy,
   Trash2,
+  RotateCcw,
 } from "lucide-react"
 import { movieService } from "@/lib/movie-service"
+import { movieLogger } from "@/lib/movie-logger"
 import type { Movie } from "@/lib/types"
 import Image from "next/image"
 
 export default function MoviesManagementPage() {
   const [movies, setMovies] = useState<Movie[]>([])
   const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState<"all" | "streaming" | "not-streaming" | "scheduled-removal">("all")
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "streaming" | "not-streaming" | "scheduled-removal" | "removed"
+  >("all")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -72,17 +76,24 @@ export default function MoviesManagementPage() {
       movie.genre.some((g) => g.toLowerCase().includes(searchTerm.toLowerCase())) ||
       movie.language.toLowerCase().includes(searchTerm.toLowerCase())
 
+    const isRemoved = movieLogger.isMovieRemoved(movie.tmdbId)
+
     const matchesStatus =
       filterStatus === "all" ||
-      (filterStatus === "streaming" && movie.isStreaming && !movie.scheduledRemoval) ||
-      (filterStatus === "not-streaming" && !movie.isStreaming) ||
-      (filterStatus === "scheduled-removal" && movie.scheduledRemoval)
+      (filterStatus === "streaming" && movie.isStreaming && !movie.scheduledRemoval && !isRemoved) ||
+      (filterStatus === "not-streaming" && !movie.isStreaming && !isRemoved) ||
+      (filterStatus === "scheduled-removal" && movie.scheduledRemoval && !isRemoved) ||
+      (filterStatus === "removed" && isRemoved)
 
     return matchesSearch && matchesStatus
   })
 
   const toggleStreaming = (tmdbId: number) => {
     movieService.toggleStreaming(tmdbId)
+  }
+
+  const restoreMovie = (tmdbId: number) => {
+    movieService.restoreMovie(tmdbId)
   }
 
   const scheduleRemoval = (tmdbId: number) => {
@@ -99,10 +110,13 @@ export default function MoviesManagementPage() {
     return `${hours}h ${mins}m`
   }
 
-  const streamingCount = movies.filter((m) => m.isStreaming && !m.scheduledRemoval).length
-  const scheduledRemovalCount = movies.filter((m) => m.scheduledRemoval).length
+  const streamingCount = movies.filter(
+    (m) => m.isStreaming && !m.scheduledRemoval && !movieLogger.isMovieRemoved(m.tmdbId),
+  ).length
+  const scheduledRemovalCount = movies.filter((m) => m.scheduledRemoval && !movieLogger.isMovieRemoved(m.tmdbId)).length
   const totalCount = movies.length
-  const notStreamingCount = movies.filter((m) => !m.isStreaming).length
+  const notStreamingCount = movies.filter((m) => !m.isStreaming && !movieLogger.isMovieRemoved(m.tmdbId)).length
+  const removedCount = movies.filter((m) => movieLogger.isMovieRemoved(m.tmdbId)).length
 
   // Loading state
   if (loading) {
@@ -117,8 +131,8 @@ export default function MoviesManagementPage() {
         </div>
 
         {/* Stats Cards Skeleton */}
-        <div className="grid gap-4 md:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid gap-4 md:grid-cols-5">
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-32 bg-gray-200 animate-pulse rounded" />
           ))}
         </div>
@@ -156,7 +170,7 @@ export default function MoviesManagementPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Movies</CardTitle>
@@ -200,6 +214,17 @@ export default function MoviesManagementPage() {
           <CardContent>
             <div className="text-2xl font-bold">{scheduledRemovalCount}</div>
             <p className="text-xs text-muted-foreground">Leaving in 3 days</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Removed Movies</CardTitle>
+            <Trash2 className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{removedCount}</div>
+            <p className="text-xs text-muted-foreground">In removal log</p>
           </CardContent>
         </Card>
       </div>
@@ -249,6 +274,14 @@ export default function MoviesManagementPage() {
                 <AlertTriangle className="h-3 w-3 mr-1" />
                 Scheduled Removal ({scheduledRemovalCount})
               </Button>
+              <Button
+                variant={filterStatus === "removed" ? "default" : "outline"}
+                onClick={() => setFilterStatus("removed")}
+                size="sm"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                Removed ({removedCount})
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -271,6 +304,7 @@ export default function MoviesManagementPage() {
               <TableBody>
                 {filteredMovies.map((movie) => {
                   const daysUntilRemoval = movieService.getDaysUntilRemoval(movie)
+                  const isRemoved = movieLogger.isMovieRemoved(movie.tmdbId)
 
                   return (
                     <TableRow key={movie.id}>
@@ -283,11 +317,19 @@ export default function MoviesManagementPage() {
                             height={90}
                             className="rounded-md object-cover"
                           />
-                          {movie.scheduledRemoval && (
+                          {movie.scheduledRemoval && !isRemoved && (
                             <div className="absolute -top-1 -right-1">
                               <Badge variant="destructive" className="text-xs px-1">
                                 <AlertTriangle className="h-2 w-2 mr-1" />
                                 {daysUntilRemoval}d
+                              </Badge>
+                            </div>
+                          )}
+                          {isRemoved && (
+                            <div className="absolute -top-1 -right-1">
+                              <Badge variant="destructive" className="text-xs px-1">
+                                <Trash2 className="h-2 w-2 mr-1" />
+                                REMOVED
                               </Badge>
                             </div>
                           )}
@@ -297,10 +339,16 @@ export default function MoviesManagementPage() {
                         <div className="max-w-[200px]">
                           <div className="font-medium truncate">{movie.title}</div>
                           <div className="text-sm text-muted-foreground line-clamp-2">{movie.description}</div>
-                          {movie.scheduledRemoval && (
+                          {movie.scheduledRemoval && !isRemoved && (
                             <div className="text-xs text-orange-600 mt-1 flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
                               Scheduled removal: {new Date(movie.scheduledRemoval.date).toLocaleDateString()}
+                            </div>
+                          )}
+                          {isRemoved && (
+                            <div className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                              <Trash2 className="h-3 w-3" />
+                              Removed from streaming
                             </div>
                           )}
                         </div>
@@ -340,13 +388,20 @@ export default function MoviesManagementPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-1">
-                          <Badge
-                            variant={movie.isStreaming ? "default" : "secondary"}
-                            className={movie.isStreaming ? "bg-green-600" : ""}
-                          >
-                            {movie.isStreaming ? "Streaming" : "Not Streaming"}
-                          </Badge>
-                          {movie.scheduledRemoval && (
+                          {isRemoved ? (
+                            <Badge variant="destructive">
+                              <Trash2 className="h-2 w-2 mr-1" />
+                              Removed
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant={movie.isStreaming ? "default" : "secondary"}
+                              className={movie.isStreaming ? "bg-green-600" : ""}
+                            >
+                              {movie.isStreaming ? "Streaming" : "Not Streaming"}
+                            </Badge>
+                          )}
+                          {movie.scheduledRemoval && !isRemoved && (
                             <Badge variant="outline" className="text-orange-600 border-orange-600">
                               <AlertTriangle className="h-2 w-2 mr-1" />
                               Removing in {daysUntilRemoval}d
@@ -362,7 +417,12 @@ export default function MoviesManagementPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {movie.scheduledRemoval ? (
+                            {isRemoved ? (
+                              <DropdownMenuItem onClick={() => restoreMovie(movie.tmdbId)}>
+                                <RotateCcw className="h-3 w-3 mr-2" />
+                                Restore Movie
+                              </DropdownMenuItem>
+                            ) : movie.scheduledRemoval ? (
                               <DropdownMenuItem onClick={() => cancelScheduledRemoval(movie.tmdbId)}>
                                 <X className="h-3 w-3 mr-2" />
                                 Cancel Scheduled Removal

@@ -59,6 +59,22 @@ class MovieLogger {
     return removedMovies.some((m) => m.tmdbId === tmdbId)
   }
 
+  // **NEW: Remove a movie from the removed log (restore it)**
+  restoreRemovedMovie(tmdbId: number): boolean {
+    const removedMovies = this.getRemovedMovies()
+    const movieIndex = removedMovies.findIndex((m) => m.tmdbId === tmdbId)
+
+    if (movieIndex >= 0) {
+      const restoredMovie = removedMovies[movieIndex]
+      removedMovies.splice(movieIndex, 1)
+      this.saveRemovedMovies(removedMovies)
+      console.log(`Movie restored from removed log: ${restoredMovie.title} (ID: ${tmdbId})`)
+      return true
+    }
+
+    return false
+  }
+
   // Log a new movie (for banner tracking)
   logNewMovie(tmdbId: number, title: string): void {
     const newMovies = this.getNewMovies()
